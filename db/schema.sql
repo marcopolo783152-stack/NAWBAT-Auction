@@ -31,6 +31,8 @@ create table if not exists users (
   terms_accepted_at timestamptz,
   privacy_version text,
   privacy_accepted_at timestamptz,
+  electronic_signature_name text,
+  electronic_signature_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   last_login_at timestamptz
@@ -42,8 +44,23 @@ alter table users add column if not exists terms_version text;
 alter table users add column if not exists terms_accepted_at timestamptz;
 alter table users add column if not exists privacy_version text;
 alter table users add column if not exists privacy_accepted_at timestamptz;
+alter table users add column if not exists electronic_signature_name text;
+alter table users add column if not exists electronic_signature_at timestamptz;
 alter table users drop constraint if exists users_user_type_check;
 alter table users add constraint users_user_type_check check (user_type in ('buyer','customer','seller','business','staff'));
+
+create table if not exists legal_acceptances (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  document_type text not null check (document_type in ('terms','privacy','fees_rules','registration_agreement')),
+  document_version text not null,
+  signature_name text not null,
+  signature_method text not null default 'typed_name',
+  ip_address inet,
+  user_agent text,
+  accepted_at timestamptz not null default now()
+);
+create index if not exists legal_acceptances_user_idx on legal_acceptances(user_id, accepted_at desc);
 
 create table if not exists user_roles (
   user_id uuid not null references users(id) on delete cascade,
@@ -244,5 +261,7 @@ insert into platform_settings(key, value) values
   ('fees.appraisal', '{"mode":"specialist_quote"}'::jsonb),
   ('fees.payment_processing', '{"mode":"provider_actual_or_included"}'::jsonb),
   ('legal.terms_version', '"2026-09-26-v1"'::jsonb),
-  ('legal.privacy_version', '"2026-09-26-v1"'::jsonb)
+  ('legal.privacy_version', '"2026-09-26-v1"'::jsonb),
+  ('legal.fees_rules_version', '"2026-09-26-v1"'::jsonb),
+  ('legal.registration_agreement_version', '"2026-09-26-v1"'::jsonb)
 on conflict (key) do update set value = excluded.value, updated_at = now();

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Language } from '../types/auction';
 import { authApi, NawbatUser } from '../services/authApi';
-import { LockKeyhole, Mail, UserRound, Store, ShoppingBag, Building2, ShieldCheck, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { LockKeyhole, Mail, UserRound, Store, ShoppingBag, Building2, ShieldCheck, ArrowRight, ArrowLeft, CheckCircle2, FileSignature } from 'lucide-react';
+import { RegistrationAgreementModal } from './RegistrationAgreementModal';
 
 type Mode = 'login' | 'register';
 
@@ -20,6 +21,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ currentLang, onAuthenticat
   const [accountType, setAccountType] = useState<'buyer' | 'customer' | 'seller' | 'business'>('buyer');
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptPrivacy, setAcceptPrivacy] = useState(false);
+  const [acceptFeesRules, setAcceptFeesRules] = useState(false);
+  const [agreementReviewed, setAgreementReviewed] = useState(false);
+  const [signatureName, setSignatureName] = useState('');
+  const [agreementOpen, setAgreementOpen] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -39,6 +44,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ currentLang, onAuthenticat
         business: 'Business seller',
         acceptTerms: 'I agree to the Terms of Use',
         acceptPrivacy: 'I agree to the Privacy Policy',
+        acceptFeesRules: 'I agree to the Fees & Rules / Auction Policies',
+        reviewAgreement: 'Review, download & electronically sign agreement',
+        reviewedAgreement: 'Agreement reviewed and electronically signed',
         policies: 'Read fees, contracts, policies and auction rules',
         submitLogin: 'Sign in securely',
         submitRegister: 'Create my account',
@@ -60,6 +68,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ currentLang, onAuthenticat
         business: 'تجارتي پلورونکی',
         acceptTerms: 'زه د کارولو شرایط منم',
         acceptPrivacy: 'زه د محرمیت تګلاره منم',
+        acceptFeesRules: 'زه فیسونه، قوانین او د لیلام تګلارې منم',
+        reviewAgreement: 'تړون وګورئ، کاپي واخلئ او برېښنایي لاسلیک وکړئ',
+        reviewedAgreement: 'تړون ولوستل شو او برېښنایي لاسلیک شو',
         policies: 'فیسونه، قراردادونه، تګلارې او د لیلام اصول وګورئ',
         submitLogin: 'خوندي ننوتل',
         submitRegister: 'زما حساب جوړ کړئ',
@@ -80,6 +91,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ currentLang, onAuthenticat
         business: 'فروشنده تجارتی',
         acceptTerms: 'شرایط استفاده را می‌پذیرم',
         acceptPrivacy: 'سیاست حریم خصوصی را می‌پذیرم',
+        acceptFeesRules: 'هزینه‌ها، قوانین و پالیسی‌های مزایده را می‌پذیرم',
+        reviewAgreement: 'قرارداد را بخوانید، نسخه بگیرید و امضای الکترونیکی کنید',
+        reviewedAgreement: 'قرارداد مطالعه و امضای الکترونیکی شد',
         policies: 'مشاهده هزینه‌ها، قراردادها، پالیسی‌ها و قوانین مزایده',
         submitLogin: 'ورود امن',
         submitRegister: 'ایجاد حساب من',
@@ -108,6 +122,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ currentLang, onAuthenticat
             preferredLanguage: currentLang,
             acceptTerms,
             acceptPrivacy,
+            acceptFeesRules,
+            agreementReviewed,
+            signatureName,
           });
       onAuthenticated(user);
     } catch (err: any) {
@@ -172,7 +189,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ currentLang, onAuthenticat
                 <span className="text-xs font-bold text-[#263a34]">{copy.name}</span>
                 <div className="mt-1.5 flex items-center gap-2 bg-[#fbfdfc] border border-[#cbd8d2] rounded-xl px-3">
                   <UserRound className="w-4 h-4 text-[#60706a]" />
-                  <input required minLength={2} value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full py-3 bg-transparent outline-none text-sm" />
+                  <input required minLength={2} value={fullName} onChange={(e) => { setFullName(e.target.value); if (agreementReviewed) { setAgreementReviewed(false); setAcceptTerms(false); setAcceptPrivacy(false); setAcceptFeesRules(false); setSignatureName(''); } }} className="w-full py-3 bg-transparent outline-none text-sm" />
                 </div>
               </label>
             )}
@@ -212,13 +229,40 @@ export const LoginPage: React.FC<LoginPageProps> = ({ currentLang, onAuthenticat
                   </div>
                 </div>
 
-                <label className="flex items-start gap-2 text-xs text-[#4e5d58] leading-5 cursor-pointer">
-                  <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} className="mt-1" />
+                <div className={`rounded-xl border p-3 ${agreementReviewed ? 'border-[#9bc9b8] bg-[#f1faf6]' : 'border-[#d8e3de] bg-[#fbfdfc]'}`}>
+                  <button
+                    type="button"
+                    onClick={() => setAgreementOpen(true)}
+                    className="w-full flex items-center justify-between gap-3 text-start"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileSignature className="w-4 h-4 text-[#0b5345] shrink-0" />
+                      <div>
+                        <div className="text-xs font-bold text-[#17362d]">
+                          {agreementReviewed ? copy.reviewedAgreement : copy.reviewAgreement}
+                        </div>
+                        {agreementReviewed && (
+                          <div className="text-[10px] text-[#587068] mt-1">
+                            {signatureName}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <span className={`w-2.5 h-2.5 rounded-full ${agreementReviewed ? 'bg-[#0b8f66]' : 'bg-[#c4cec9]'}`} />
+                  </button>
+                </div>
+
+                <label className={`flex items-start gap-2 text-xs leading-5 ${agreementReviewed ? 'text-[#4e5d58] cursor-pointer' : 'text-[#9ba5a1] cursor-not-allowed'}`}>
+                  <input type="checkbox" disabled={!agreementReviewed} checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} className="mt-1" />
                   <span>{copy.acceptTerms}</span>
                 </label>
-                <label className="flex items-start gap-2 text-xs text-[#4e5d58] leading-5 cursor-pointer">
-                  <input type="checkbox" checked={acceptPrivacy} onChange={(e) => setAcceptPrivacy(e.target.checked)} className="mt-1" />
+                <label className={`flex items-start gap-2 text-xs leading-5 ${agreementReviewed ? 'text-[#4e5d58] cursor-pointer' : 'text-[#9ba5a1] cursor-not-allowed'}`}>
+                  <input type="checkbox" disabled={!agreementReviewed} checked={acceptPrivacy} onChange={(e) => setAcceptPrivacy(e.target.checked)} className="mt-1" />
                   <span>{copy.acceptPrivacy}</span>
+                </label>
+                <label className={`flex items-start gap-2 text-xs leading-5 ${agreementReviewed ? 'text-[#4e5d58] cursor-pointer' : 'text-[#9ba5a1] cursor-not-allowed'}`}>
+                  <input type="checkbox" disabled={!agreementReviewed} checked={acceptFeesRules} onChange={(e) => setAcceptFeesRules(e.target.checked)} className="mt-1" />
+                  <span>{copy.acceptFeesRules}</span>
                 </label>
               </>
             )}
@@ -229,7 +273,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ currentLang, onAuthenticat
 
             <button
               type="submit"
-              disabled={busy}
+              disabled={busy || (mode === 'register' && (!agreementReviewed || !acceptTerms || !acceptPrivacy || !acceptFeesRules || signatureName.trim().toLocaleLowerCase() !== fullName.trim().toLocaleLowerCase()))}
               className="w-full bg-[#003a2f] hover:bg-[#0b5345] disabled:opacity-60 text-white rounded-xl py-3.5 font-bold text-sm flex items-center justify-center gap-2 shadow-md"
             >
               {busy ? <span className="w-5 h-5 rounded-full border-2 border-white/40 border-t-white animate-spin" /> : (
@@ -246,6 +290,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({ currentLang, onAuthenticat
           </form>
         </div>
       </div>
+      <RegistrationAgreementModal
+        open={agreementOpen}
+        currentLang={currentLang}
+        fullName={fullName}
+        signatureName={signatureName}
+        onSignatureChange={setSignatureName}
+        onClose={() => setAgreementOpen(false)}
+        onReviewed={() => {
+          setAgreementReviewed(true);
+          setAgreementOpen(false);
+        }}
+      />
     </section>
   );
 };

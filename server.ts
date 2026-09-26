@@ -83,7 +83,7 @@ export async function createApp(serveFrontend = true) {
       return res.status(503).json({ error: 'Account database is not configured yet.' });
     }
 
-    const { fullName, email, password, accountType, preferredLanguage, acceptTerms, acceptPrivacy } = req.body || {};
+    const { fullName, email, password, accountType, preferredLanguage, acceptTerms, acceptPrivacy, acceptFeesRules, agreementReviewed, signatureName } = req.body || {};
     const allowedAccountTypes = new Set(['buyer', 'customer', 'seller', 'business']);
 
     if (typeof fullName !== 'string' || fullName.trim().length < 2) {
@@ -98,8 +98,11 @@ export async function createApp(serveFrontend = true) {
     if (!allowedAccountTypes.has(accountType)) {
       return res.status(400).json({ error: 'Choose buyer, customer, seller, or business.' });
     }
-    if (acceptTerms !== true || acceptPrivacy !== true) {
-      return res.status(400).json({ error: 'Terms of Use and Privacy Policy must be accepted.' });
+    if (agreementReviewed !== true || acceptTerms !== true || acceptPrivacy !== true || acceptFeesRules !== true) {
+      return res.status(400).json({ error: 'The registration agreement, Terms, Privacy Policy, and Fees & Rules must be reviewed and accepted.' });
+    }
+    if (typeof signatureName !== 'string' || signatureName.trim().toLocaleLowerCase() !== fullName.trim().toLocaleLowerCase()) {
+      return res.status(400).json({ error: 'Electronic signature must exactly match the full legal name on the account.' });
     }
 
     try {
@@ -111,6 +114,11 @@ export async function createApp(serveFrontend = true) {
         preferredLanguage: ['fa', 'ps', 'en'].includes(preferredLanguage) ? preferredLanguage : 'fa',
         termsVersion: '2026-09-26-v1',
         privacyVersion: '2026-09-26-v1',
+        feesRulesVersion: '2026-09-26-v1',
+        registrationAgreementVersion: '2026-09-26-v1',
+        signatureName,
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null,
       });
 
       const token = issueSessionToken({

@@ -30,6 +30,11 @@ export async function registerPublicUser(input: {
   preferredLanguage?: 'fa' | 'ps' | 'en';
   termsVersion: string;
   privacyVersion: string;
+  feesRulesVersion: string;
+  registrationAgreementVersion: string;
+  signatureName: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
 }) {
   const hash = await bcrypt.hash(input.password, 12);
   const pool = getPool();
@@ -40,8 +45,9 @@ export async function registerPublicUser(input: {
     const userResult = await client.query(
       `insert into users
         (full_name, full_name_en, email, password_hash, user_type, status, kyc_status, preferred_language,
-         terms_version, terms_accepted_at, privacy_version, privacy_accepted_at)
-       values ($1,$1,$2,$3,$4,'active','unverified',$5,$6,now(),$7,now())
+         terms_version, terms_accepted_at, privacy_version, privacy_accepted_at,
+         electronic_signature_name, electronic_signature_at)
+       values ($1,$1,$2,$3,$4,'active','unverified',$5,$6,now(),$7,now(),$8,now())
        returning id, email, phone, full_name, full_name_en, user_type, status, kyc_status, preferred_language, created_at`,
       [
         input.fullName.trim(),
@@ -51,6 +57,7 @@ export async function registerPublicUser(input: {
         input.preferredLanguage || 'fa',
         input.termsVersion,
         input.privacyVersion,
+        input.signatureName.trim(),
       ],
     );
 
@@ -61,6 +68,25 @@ export async function registerPublicUser(input: {
     await client.query(
       'insert into user_roles(user_id, role_id) values ($1,$2) on conflict do nothing',
       [user.id, roleResult.rows[0].id],
+    );
+    await client.query(
+      `insert into legal_acceptances
+        (user_id, document_type, document_version, signature_name, signature_method, ip_address, user_agent)
+       values
+        ($1,'terms',$2,$6,'typed_name',$7,$8),
+        ($1,'privacy',$3,$6,'typed_name',$7,$8),
+        ($1,'fees_rules',$4,$6,'typed_name',$7,$8),
+        ($1,'registration_agreement',$5,$6,'typed_name',$7,$8)`,
+      [
+        user.id,
+        input.termsVersion,
+        input.privacyVersion,
+        input.feesRulesVersion,
+        input.registrationAgreementVersion,
+        input.signatureName.trim(),
+        input.ipAddress || null,
+        input.userAgent || null,
+      ],
     );
     await client.query('commit');
 
