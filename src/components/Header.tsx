@@ -131,7 +131,7 @@ export const Header: React.FC<HeaderProps> = ({
               {viewMode === 'mobile_app' ? <Monitor className="w-3.5 h-3.5" /> : <Smartphone className="w-3.5 h-3.5" />}
             </button>
 
-            <button onClick={onOpenSubmitLot} className="hidden sm:inline-flex items-center gap-1.5 bg-[#0b5345] hover:bg-[#003a2f] text-white px-4 py-2 rounded-xl text-xs font-semibold">
+            <button onClick={onOpenSubmitLot} className="hidden sm:inline-flex items-center gap-1.5 bg-[#c9953f] hover:bg-[#b48635] text-[#1d1508] px-4 py-2 rounded-lg text-xs font-black shadow-sm">
               <PlusCircle className="w-3.5 h-3.5" /><span>{t.sellItem}</span>
             </button>
 
@@ -191,7 +191,7 @@ export const Header: React.FC<HeaderProps> = ({
         )}
       </div>
 
-      <nav className="w-full px-4 lg:px-8 border-t border-[#003a2f]/8 bg-white/80 backdrop-blur-xl">
+      <nav className="w-full px-4 lg:px-8 border-t border-black/10 bg-[#0c0f0e] text-white">
         <div className="flex items-center justify-between gap-3 overflow-x-auto py-1.5">
           <div className="flex items-center gap-1.5 whitespace-nowrap">
             {navItems.map((item, idx) => {
@@ -210,7 +210,7 @@ export const Header: React.FC<HeaderProps> = ({
                       onTabChange(item.catId === 'all' ? 'home' : 'categories');
                     } else onTabChange(item.id);
                   }}
-                  className={`text-xs px-3 py-1.5 rounded-lg ${isActive ? 'bg-[#dde9f9] text-[#003a2f] font-bold' : 'text-[#3f4945] hover:bg-[#ecf4ff]'}`}
+                  className={`text-xs px-3 py-2 rounded-md transition-colors ${isActive ? 'bg-[#c9953f] text-[#1f1607] font-black' : 'text-white/88 hover:bg-white/10 hover:text-white'}`}
                 >
                   {item.label}
                 </button>
@@ -220,12 +220,12 @@ export const Header: React.FC<HeaderProps> = ({
 
           {currentUser && (
             <div className="hidden md:flex items-center gap-2 whitespace-nowrap">
-              <button onClick={() => onTabChange('my-bids')} className="text-xs px-2.5 py-1 flex items-center gap-1.5">
-                <Gavel className="w-3 h-3 text-[#326286]" />{t.myBids}
+              <button onClick={() => onTabChange('my-bids')} className="text-xs px-2.5 py-1.5 flex items-center gap-1.5 text-white/90 hover:text-white">
+                <Gavel className="w-3 h-3 text-[#d7a958]" />{t.myBids}
                 {myBidsCount > 0 && <span className="bg-[#0b5345] text-white text-[10px] px-1.5 rounded-full">{myBidsCount}</span>}
               </button>
-              <button onClick={() => onTabChange('watchlist')} className="text-xs px-2.5 py-1 flex items-center gap-1.5">
-                <Bookmark className="w-3 h-3 text-[#735c00]" />{t.watchlist}
+              <button onClick={() => onTabChange('watchlist')} className="text-xs px-2.5 py-1.5 flex items-center gap-1.5 text-white/90 hover:text-white">
+                <Bookmark className="w-3 h-3 text-[#d7a958]" />{t.watchlist}
                 {watchlistCount > 0 && <span className="bg-[#cea701] text-[#231b00] text-[10px] px-1.5 rounded-full">{watchlistCount}</span>}
               </button>
             </div>
