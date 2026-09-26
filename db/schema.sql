@@ -1,4 +1,5 @@
 create extension if not exists pgcrypto;
+create extension if not exists citext;
 
 create table if not exists roles (
   id uuid primary key default gen_random_uuid(),
@@ -187,3 +188,24 @@ create table if not exists platform_settings (
   updated_by uuid references users(id),
   updated_at timestamptz not null default now()
 );
+
+
+insert into roles(key, name_en, name_fa, permissions, is_system) values
+  ('superadmin','Super Admin','مدیر ارشد','["*"]'::jsonb,true),
+  ('admin','Admin','مدیر اجرایی','["users.*","auctions.*","kyc.*","finance.read","disputes.*"]'::jsonb,true),
+  ('auction_manager','Auction Manager','مدیر مزایده','["auctions.*","users.read"]'::jsonb,true),
+  ('auctioneer','Auctioneer','مزایده‌دار','["auctions.read","auctions.bid_control"]'::jsonb,true),
+  ('cataloger','Cataloger','مسئول ثبت کالا','["auctions.create","auctions.edit"]'::jsonb,true),
+  ('finance','Finance','امور مالی','["finance.*","users.read"]'::jsonb,true),
+  ('kyc','KYC Officer','مسئول تایید هویت','["kyc.*","users.read"]'::jsonb,true),
+  ('support','Support','پشتیبانی','["support.*","users.read","disputes.read"]'::jsonb,true),
+  ('logistics','Logistics','لوژستیک','["logistics.*","users.read"]'::jsonb,true),
+  ('moderator','Moderator','ناظر','["users.read","auctions.read","fraud.read"]'::jsonb,true),
+  ('buyer','Buyer','خریدار','["bidding.place","watchlist.manage"]'::jsonb,true),
+  ('seller','Seller','فروشنده','["auctions.submit","seller.manage"]'::jsonb,true),
+  ('business','Business Seller','فروشنده تجارتی','["auctions.submit","seller.manage","business.manage"]'::jsonb,true)
+on conflict (key) do update
+set name_en = excluded.name_en,
+    name_fa = excluded.name_fa,
+    permissions = excluded.permissions,
+    is_system = excluded.is_system;
