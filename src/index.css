@@ -42,3 +42,97 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 58, 47, 0.3);
 }
+
+
+/* NAWBAT brand system */
+.nawbat-brand-banner {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(115deg, #002f27 0%, #00493d 52%, #0b5f50 100%);
+  border-bottom: 1px solid rgba(175, 239, 220, 0.16);
+}
+
+.nawbat-brand-banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.22;
+  background-image:
+    linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255,255,255,0.04) 25%, transparent 25%);
+  background-size: 34px 34px;
+  background-position: 0 0, 17px 17px;
+  pointer-events: none;
+}
+
+.nawbat-brand-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(30px);
+  pointer-events: none;
+}
+
+.nawbat-brand-orb-one {
+  width: 220px;
+  height: 220px;
+  top: -120px;
+  left: 8%;
+  background: rgba(175, 239, 220, 0.18);
+}
+
+.nawbat-brand-orb-two {
+  width: 260px;
+  height: 260px;
+  right: 10%;
+  bottom: -180px;
+  background: rgba(206, 167, 1, 0.12);
+}
+
+.nawbat-logo-panel {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0.7rem 1rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 10px 30px rgba(0, 25, 20, 0.18),
+    inset 0 1px 0 rgba(255,255,255,0.8);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.group:hover .nawbat-logo-panel {
+  transform: translateY(-1px);
+  box-shadow:
+    0 14px 36px rgba(0, 25, 20, 0.24),
+    inset 0 1px 0 rgba(255,255,255,0.9);
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: 160ms;
+  transition-timing-function: ease;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(50, 98, 134, 0.2);
+  outline-offset: 2px;
+}
+
+@media (max-width: 767px) {
+  .nawbat-logo-panel {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border-radius: 0.9rem;
+  }
+}
