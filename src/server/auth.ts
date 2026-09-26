@@ -127,3 +127,17 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     return res.status(401).json({ error: 'Session expired or invalid.' });
   }
 }
+
+
+export function requireRoles(...roles: string[]) {
+  const allowed = new Set(roles);
+  return (req: Request, res: Response, next: NextFunction) => {
+    const claims = (req as Request & { admin?: SessionClaims }).admin;
+    if (!claims) return res.status(401).json({ error: 'Authentication required.' });
+    if (claims.role === 'superadmin' || claims.role === 'admin') return next();
+    if (!allowed.has(claims.role)) {
+      return res.status(403).json({ error: 'Your staff role does not permit this action.' });
+    }
+    return next();
+  };
+}
