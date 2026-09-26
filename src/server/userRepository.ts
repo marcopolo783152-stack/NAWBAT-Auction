@@ -9,6 +9,7 @@ function roleTitleFor(userType: string) {
   if (userType === 'staff') return 'Staff';
   if (userType === 'business') return 'Business Seller';
   if (userType === 'seller') return 'Seller';
+  if (userType === 'customer') return 'Customer';
   return 'Buyer';
 }
 
