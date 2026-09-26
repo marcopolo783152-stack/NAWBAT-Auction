@@ -48,10 +48,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
   const [savedFeedback, setSavedFeedback] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<any>({
-    fullName: currentLang === 'en' ? 'Ahmad Shah Rezaye' : 'احمدشاه رضایی',
-    email: 'ahmad.rezaye@kabul-trade.af',
-    phone: '+93 77 990 1234',
-    tazkiraNumber: 'KBL-8812-4401',
+    fullName: currentLang === 'en' ? 'Guest' : 'مهمان',
+    email: '',
+    phone: '',
+    tazkiraNumber: '',
     balanceAFN: 0,
     escrowLockedAFN: 0,
   });
@@ -153,7 +153,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 {currentLang === 'en' ? 'User Profile & Preferences' : 'پروفایل کاربری و تنظیمات حساب'}
               </h2>
               <span className="text-[11px] text-[#707975] block">
-                {currentLang === 'en' ? 'Manage your identity and email notifications' : 'مدیریت هویت تایید شده و اعلانات ایمیل'}
+                {currentLang === 'en' ? 'User sign-in is required before profile settings are available' : 'برای استفاده از پروفایل و اعلانات، ورود کاربر لازم است'}
               </span>
             </div>
           </div>
@@ -169,7 +169,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         <div className="bg-[#f7f9ff] p-4 rounded-2xl border border-[#003a2f]/10 flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4 relative z-10">
           <div className="flex items-center gap-3.5">
             <div className="w-14 h-14 rounded-2xl bg-[#003a2f] text-[#afefdc] flex items-center justify-center font-bold text-xl shadow-xs ring-4 ring-[#afefdc]/40">
-              AR
+              NA
             </div>
             <div>
               <div className="flex items-center gap-1.5">
@@ -226,8 +226,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
           <p className="text-xs text-[#707975] leading-relaxed">
             {currentLang === 'en'
-              ? 'Control which instant alert emails you receive about your auction activity and bidding updates. Changes are applied immediately.'
-              : 'با استفاده از کلیدهای زیر مشخص کنید چه نوع ایمیل‌های اطلاع‌رسانی برای حساب شما ارسال گردد. تغییرات بلافاصله ذخیره و اعمال می‌شوند.'}
+              ? 'Control which instant alert emails you receive about your auction activity and bidding updates. These settings will sync after user authentication is enabled.'
+              : 'با استفاده از کلیدهای زیر مشخص کنید چه نوع ایمیل‌های اطلاع‌رسانی برای حساب شما ارسال گردد. پس از فعال شدن ورود کاربران، این تنظیمات با حساب شما همگام می‌شود.'}
           </p>
 
           <div className="flex flex-col gap-3.5 pt-1">
