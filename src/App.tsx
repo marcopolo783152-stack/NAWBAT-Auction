@@ -119,7 +119,7 @@ export default function App() {
           } else {
             setToastMessage({
               title: 'پیشنهاد شما با موفقیت ثبت شد!',
-              subtitle: `مبلغ ${amountAFN.toLocaleString('en-US')} AFN در سرور نوبت و کیف‌پول HesabPay تایید گردید.`,
+              subtitle: `مبلغ ${amountAFN.toLocaleString('en-US')} AFN در این نشست مزایده ثبت شد. تایید پرداخت فقط پس از پاسخ رسمی حساب‌پی انجام می‌شود.`,
             });
           }
 
