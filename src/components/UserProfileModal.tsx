@@ -52,8 +52,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     email: 'ahmad.rezaye@kabul-trade.af',
     phone: '+93 77 990 1234',
     tazkiraNumber: 'KBL-8812-4401',
-    balanceAFN: 2450000,
-    escrowLockedAFN: 1820000,
+    balanceAFN: 0,
+    escrowLockedAFN: 0,
   });
 
   // Fetch from backend API on mount
@@ -182,7 +182,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                 <span className="inline-flex items-center gap-1 bg-[#afefdc]/50 text-[#003a2f] text-[10px] font-bold px-2 py-0.5 rounded-md">
                   <ShieldCheck className="w-3 h-3 text-[#003a2f]" />
-                  {currentLang === 'en' ? 'e-Tazkira Verified (Tier 2)' : 'تایید هویت تذکره الکترونیکی (سطح ۲)'}
+                  {currentLang === 'en' ? 'Identity review status' : 'وضعیت بررسی هویت'}
                 </span>
                 <span className="text-[10px] font-mono text-[#707975]">
                   {userProfile.tazkiraNumber}
@@ -194,10 +194,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           {/* Wallet Mini Metric */}
           <div className="bg-white p-3 rounded-xl border border-[#003a2f]/10 shadow-2xs text-center sm:text-left rtl:sm:text-right min-w-[140px]">
             <span className="text-[10px] text-[#707975] font-semibold block">
-              {currentLang === 'en' ? 'HesabPay Balance' : 'موجودی کیف‌پول حساب‌پی'}
+              {currentLang === 'en' ? 'HesabPay balance (when connected)' : 'موجودی حساب‌پی (پس از اتصال)'}
             </span>
             <span className="font-mono text-sm font-extrabold text-[#003a2f] block mt-0.5">
-              {(userProfile.balanceAFN || 2450000).toLocaleString('en-US')} AFN
+              {(userProfile.balanceAFN ?? 0).toLocaleString('en-US')} AFN
             </span>
           </div>
         </div>
@@ -334,8 +334,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-xs text-[#111d27]">
                       {currentLang === 'en' 
-                        ? 'HesabPay Transaction Receipts' 
-                        : 'رسیدهای رسمی تراکنش و سپرده حساب‌پی'}
+                        ? 'Payment Transaction Receipts' 
+                        : 'رسیدهای تراکنش پرداخت'}
                     </span>
                     <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full font-mono ${
                       emailHesabPayReceipts ? 'bg-[#afefdc] text-[#003a2f]' : 'bg-gray-200 text-gray-700'
@@ -345,8 +345,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   </div>
                   <p className="text-[11px] text-[#707975] mt-1 leading-normal">
                     {currentLang === 'en'
-                      ? 'Receive confirmation receipts for escrow deposits, winning bid settlements, and refund releases.'
-                      : 'ارسال رسید معتبر فاکتور مالی جهت قفل شدن وجه امانی در حین رقابت و آزادسازی آن پس از تحویل کالا.'}
+                      ? 'Receive receipts for payment events after the payment provider integration is activated.'
+                      : 'پس از فعال شدن اتصال پرداخت، رسید رویدادهای مالی برای حساب شما ارسال می‌شود.'}
                   </p>
                 </div>
               </div>
