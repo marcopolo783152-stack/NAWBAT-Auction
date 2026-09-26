@@ -7,7 +7,7 @@ export async function findAuthUserByEmail(email: string) {
   const result = await getPool().query(
     `select
        u.id, u.email, u.phone, u.password_hash, u.full_name, u.full_name_en,
-       u.user_type, u.status, u.kyc_status, u.preferred_language,
+       u.user_type, u.status, u.kyc_status, u.preferred_language, u.notification_preferences,
        coalesce(r.key, u.user_type) as role_key,
        coalesce(r.name_en, initcap(u.user_type)) as role_name,
        coalesce(r.permissions, '[]'::jsonb) as permissions
@@ -28,6 +28,8 @@ export async function registerPublicUser(input: {
   password: string;
   accountType: PublicAccountType;
   preferredLanguage?: 'fa' | 'ps' | 'en';
+  termsVersion: string;
+  privacyVersion: string;
 }) {
   const hash = await bcrypt.hash(input.password, 12);
   const pool = getPool();
@@ -37,8 +39,9 @@ export async function registerPublicUser(input: {
     await client.query('begin');
     const userResult = await client.query(
       `insert into users
-        (full_name, full_name_en, email, password_hash, user_type, status, kyc_status, preferred_language)
-       values ($1,$1,$2,$3,$4,'active','unverified',$5)
+        (full_name, full_name_en, email, password_hash, user_type, status, kyc_status, preferred_language,
+         terms_version, terms_accepted_at, privacy_version, privacy_accepted_at)
+       values ($1,$1,$2,$3,$4,'active','unverified',$5,$6,now(),$7,now())
        returning id, email, phone, full_name, full_name_en, user_type, status, kyc_status, preferred_language, created_at`,
       [
         input.fullName.trim(),
@@ -46,6 +49,8 @@ export async function registerPublicUser(input: {
         hash,
         input.accountType,
         input.preferredLanguage || 'fa',
+        input.termsVersion,
+        input.privacyVersion,
       ],
     );
 
@@ -97,5 +102,6 @@ export function safeAuthUser(row: any) {
     status: row.status,
     kycStatus: row.kyc_status,
     preferredLanguage: row.preferred_language || 'fa',
+    notificationPreferences: row.notification_preferences || {},
   };
 }
