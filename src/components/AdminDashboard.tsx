@@ -548,6 +548,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   >
                     <option value="all">همه انواع کاربران</option>
                     <option value="buyer">خریداران (Buyers)</option>
+                    <option value="customer">مشتریان (Customers)</option>
                     <option value="seller">فروشندگان (Sellers)</option>
                     <option value="business">شرکت‌ها و تاجران (Dealers)</option>
                     <option value="staff">کادر اداری (Staff)</option>
@@ -555,15 +556,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
 
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     const name = prompt('نام کامل کاربر جدید:');
                     const email = prompt('ایمیل:');
-                    if (name && email) {
-                      adminApi.createUser({ fullName: name, email, userType: 'buyer' }).then(() => {
-                        showToast('کاربر جدید ثبت گردید.');
-                        loadData();
-                      });
+                    const userType = prompt('نوع حساب: buyer / customer / seller / business / staff', 'buyer') || 'buyer';
+                    if (!name || !email) return;
+
+                    let roleId: string | undefined;
+                    let temporaryPassword: string | undefined;
+                    if (userType === 'staff') {
+                      roleId = prompt('نقش کارمند: admin / auction_manager / auctioneer / cataloger / finance / kyc / support / logistics / moderator', 'support') || 'support';
+                      temporaryPassword = prompt('رمز موقت کارمند (حداقل 10 کاراکتر):') || '';
+                      if (temporaryPassword.length < 10) {
+                        showToast('رمز موقت باید حداقل 10 کاراکتر باشد.');
+                        return;
+                      }
                     }
+
+                    const result = await adminApi.createUser({ fullName: name, email, userType, roleId, temporaryPassword });
+                    if (result?.error) {
+                      showToast(result.error);
+                      return;
+                    }
+                    showToast(userType === 'staff' ? 'حساب کارمند با نقش و رمز موقت ایجاد شد.' : 'کاربر جدید ثبت گردید.');
+                    loadData();
                   }}
                   className="bg-[#003a2f] hover:bg-[#0b5345] text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
                 >
