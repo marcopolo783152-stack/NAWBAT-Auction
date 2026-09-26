@@ -23,9 +23,9 @@ export const INITIAL_AUCTION_LOTS: AuctionLot[] = [
     imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBXrb-z2Qv6ECzBcdp4f6JTJQQh1DYVqx89lOLOOoVbkqeHM_mkCnNY7_K6IMPgf9qETqp783LVXvNSfL2-fLjLe5yNJYCMHgrLz0_Zn-xt719UYEoWWWrHGkl5yPqsFr61JgFzNEsbpIm28NbGIvjMOxeBtWBEJpMrFsOT6w70d0rW8SwS-tRrINqoMBWalxrIYWZTT6vT3-9RD6xTWawJioxwjiTnCWaCfeJr10HMcxuwj0om48vu',
     endTime: now + (18 * 60 * 1000) + 45000, // 18m 45s left
     isClosingSoon: true,
-    inspectorName: 'انجنیر فاروق رحمانی (آمریت ترافیک کابل)',
+    inspectorName: 'نمونه نمایشی — بررسی نشده',
     inspectionGrade: 'A+',
-    escrowStatus: 'HesabPay Guaranteed',
+    escrowStatus: 'Demo listing — payment integration pending',
     description: 'عراده تویوتا هایلوکس ساخت جاپان، ماشین 2.8 توربودیزل، فورویل درایو با 42,000 کیلومتر کارکرد واقعی. فاقد هرگونه تکر یا رنگ‌شدگی. مالیه تا پایان سال 1403 تصفیه شده است.',
     descriptionEn: 'Toyota Hilux 2.8L Turbo Diesel 4WD with 42,000 km verified mileage. 100% original factory paint, all municipal and customs taxes cleared.',
     specs: {
@@ -47,7 +47,7 @@ export const INITIAL_AUCTION_LOTS: AuctionLot[] = [
     ],
     sellerName: 'شرکت لوجستیکی طلوع افغان',
     sellerKycTier: 3,
-    sellerVerified: true,
+    sellerVerified: false,
   },
   {
     id: 'lot-2',
@@ -68,9 +68,9 @@ export const INITIAL_AUCTION_LOTS: AuctionLot[] = [
     imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAHfNh-y8KSnfpXBiPiTyfYWBXgTjraa-ZY-MALG5PVjNwvbG-zrzGzbX-qvLVnz5yAsESSfyXpNlsxMWqSKv4MZThs1EvcvrBLkZCW66IU8V8z5kNSDOcdlRMOHIYINwSFwVc9DK-c6ytJv7mKLldiAsGLLlScG6lCO3hQkKaUN0y0IMULnp9zZOdau-YREJQyzu7XBDUrg9JTl78f8xDQfrrYlSmSo1XmkVvsLmwQ_Nj_ZtBDXDMm',
     endTime: now + (4 * 60 * 1000) + 12000, // 4m 12s left - Closing very soon!
     isClosingSoon: true,
-    inspectorName: 'استاد عبدالغفور رسولی (اتحادیه قالین‌بافان هرات)',
+    inspectorName: 'نمونه نمایشی — بررسی نشده',
     inspectionGrade: 'A+',
-    escrowStatus: 'HesabPay Guaranteed',
+    escrowStatus: 'Demo listing — payment integration pending',
     description: 'شاهکار بافت دستباف ابریشم طبیعی با چوب‌رنگ گیاهی سنتی (روناس، پوست انار و گردو). بافت بسیار ریز رج‌شمار 85 در مقیاس استادبافت ولایت هرات. دارای شناسنامه اصالت فیزیکی و امضای بافنده.',
     descriptionEn: 'Masterpiece 100% natural silk carpet with botanical vegetal dye extracted from pomegranate peel and walnut. Knot density 85 raj, Herat guild certificate.',
     specs: {
@@ -91,7 +91,7 @@ export const INITIAL_AUCTION_LOTS: AuctionLot[] = [
     ],
     sellerName: 'کارگاه بافندگی ابریشم استاد رسولی',
     sellerKycTier: 2,
-    sellerVerified: true,
+    sellerVerified: false,
   },
   {
     id: 'lot-3',
@@ -112,9 +112,9 @@ export const INITIAL_AUCTION_LOTS: AuctionLot[] = [
     imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuASqVD51D1pWxPs_zCCEFja5JCDXLJmDxEUhQY4ran-zET3CdDW_qYwO3JzTSm9V2T7JeZfIqoEDZtvlNoGda4hdUs0S0gWtpGNBmN3xDnJ9QBwPuGlHvO2Qrr0UAOgFLNJtcB0WZMwc0YOSW6wWtrwANoKpTGLiWal3WX1TpvjBiPUcaoM1vJ4IY2aKLAaH5yiXF5_GpU5Yt0_el9X7M_QcENm4RNpX7E82B7Z94b4f0JBfBzNjuom',
     endTime: now + (42 * 60 * 1000), // 42m left
     isClosingSoon: false,
-    inspectorName: 'داکتر نجیب‌الله حیدری (لابراتوار جیولوجی کابل)',
+    inspectorName: 'نمونه نمایشی — بررسی نشده',
     inspectionGrade: 'A',
-    escrowStatus: 'HesabPay Guaranteed',
+    escrowStatus: 'Demo listing — payment integration pending',
     description: 'قطعه زمرد بلورین با شفافیت بالا و رنگ سبز سیر غنی استخراج شده از معادن خنج ولایت پنجشیر. دارای سرتیفیکیت رسمی عیارسنجی، وزن سنجش دقیق و بارنامه قانونی تایید شده.',
     descriptionEn: 'High transparency deep royal green raw emerald crystal cluster extracted from the Khenj mines of Panjshir Valley. Official geological laboratory assay included.',
     specs: {
@@ -133,7 +133,7 @@ export const INITIAL_AUCTION_LOTS: AuctionLot[] = [
     ],
     sellerName: 'اتحادیه تجاران احجار کریمه کابل',
     sellerKycTier: 3,
-    sellerVerified: true,
+    sellerVerified: false,
   },
   {
     id: 'lot-4',
@@ -154,9 +154,9 @@ export const INITIAL_AUCTION_LOTS: AuctionLot[] = [
     imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDATs-X3PPAHb5cCDeLuTDKdmN49LfaIJEUFj8HgwOJCLl0ieW4UVik1XPqSJCQ1JMh2cKHGzmQ_BmAJKh-yCwsoQUElLulmMbDZKrEShwbvUZoDYuVPrHWSL75ARJ07mT5BPdye1nyCZXGoaD7n87hJB7c3yxg5PgH33740m0gdIBW2BFTV8_erhu5AKU-OgrXWctbnc-tM-FQj7fkmMkI4RXKyWjzJWMD7uQFpKK_Fcd7D6UoKCo7',
     endTime: now + (2 * 60 * 1000) + 30000, // 2m 30s left - Anti snip close!
     isClosingSoon: true,
-    inspectorName: 'انجنیر حکمت‌الله ضیا (ریاست زراعت و مالداری بلخ)',
+    inspectorName: 'نمونه نمایشی — بررسی نشده',
     inspectionGrade: 'A+',
-    escrowStatus: 'HesabPay Guaranteed',
+    escrowStatus: 'Demo listing — payment integration pending',
     description: 'تراکتور دیزلی 85 اسب بخار با سیستم هیدرولیک پیشرفته، گیربکس سنکرونیزه و دیفرانسیل سنگین. مناسب برای کشت و خاک‌ورزی اراضی زراعتی ولایات شمال. اسناد گمرکی حیرتان کاملاً تسویه شده است.',
     descriptionEn: '85 HP Turbo-diesel heavy farm tractor with synchronous transmission and hydraulic multi-lift. Direct Hayratan customs transit clearance.',
     specs: {
@@ -175,7 +175,7 @@ export const INITIAL_AUCTION_LOTS: AuctionLot[] = [
     ],
     sellerName: 'واردات ماشین‌آلات صنعتی نور بلخ',
     sellerKycTier: 3,
-    sellerVerified: true,
+    sellerVerified: false,
   },
   {
     id: 'lot-5',
@@ -196,9 +196,9 @@ export const INITIAL_AUCTION_LOTS: AuctionLot[] = [
     imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCgfm8DBsvmarbCXu6idPSInET1cICRgF4NHg1jUt76wNRXWc69Oxtq3GEazX1C7PI07lb50GOpprjqn7piaKFnjnuO5Y0pyVIcBOlckvVpdx2b2f6I7kovtXYLDincpHLIpddC0Drg0jlRwIiOVV5ruur0VYwVttqWlxDGVCSXQgIymG1k9XdwZBYgraYqcEDNLk6Wg4re5V9GhCCK_70YJfJvx4XPrZHKVrNGbo6RleVDtUwa9Rd5',
     endTime: now + (11 * 60 * 1000) + 10000, // 11m 10s left
     isClosingSoon: true,
-    inspectorName: 'استاد میراحمد جویا (موزه ملی کابل / کارشناس ثبت)',
+    inspectorName: 'نمونه نمایشی — بررسی نشده',
     inspectionGrade: 'A',
-    escrowStatus: 'HesabPay Guaranteed',
+    escrowStatus: 'Demo listing — payment integration pending',
     description: 'صندوق نفیس سنتی نورستانی از چوب سدر کوهی با نقوش اسلیمی برجسته هندسی، لولاها و قفل کوبشی آهنگری شده دستی. دارای مجوز نقل و انتقال قانونی آثار هنری تایید شده.',
     descriptionEn: 'Authentic 18th-century antique Nuristani wooden dowry chest, hand-carved mountain Himalayan cedar with forged iron hinges. Fully certified provenance and permit.',
     specs: {
@@ -216,7 +216,7 @@ export const INITIAL_AUCTION_LOTS: AuctionLot[] = [
     ],
     sellerName: 'کلکسیون میراث فرهنگی نورستان',
     sellerKycTier: 2,
-    sellerVerified: true,
+    sellerVerified: false,
   },
   {
     id: 'lot-6',
@@ -237,9 +237,9 @@ export const INITIAL_AUCTION_LOTS: AuctionLot[] = [
     imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA368Qf-0yEwm1UVaavVxNPMrLGxNoi1zS3xcO7G01R-dPr_2KkxHtmwt5hbn5g2--h_qfv3Sn_V_QALtLkPTC6BfMuKc9hMFSUM8iuRB9BYpx3xIMm64ZHtr7-aHeEG0Qdfn5bPISv6RDdhZhD8fPh2YBC2snVaz4xr6nejY8k0nVfdt-syGvy0GLJc0xq2or_jJ9lPqkhSBkieum9Ubu0REBf60NPT0_ZsWqaY4UaBVSIXzIU6oxB',
     endTime: now + (25 * 60 * 1000), // 25m left
     isClosingSoon: false,
-    inspectorName: 'مرکز تایید رجستری اترا (ATRA جلال‌آباد)',
+    inspectorName: 'نمونه نمایشی — بررسی نشده',
     inspectionGrade: 'A+',
-    escrowStatus: 'HesabPay Guaranteed',
+    escrowStatus: 'Demo listing — payment integration pending',
     description: 'بسته 5 دستگاهی گوشی هوشمند Apple iPhone 15 Pro Max حافظه 1 ترابایت تیتانیوم طبیعی. دو سیم‌کارت فیزیکی ZA/A، فعال‌سازی رسمی در شبکه مخابراتی افغانستان.',
     descriptionEn: 'Bundle of 5 brand new Apple iPhone 15 Pro Max 1TB Natural Titanium phones. Factory sealed dual physical SIM edition, ATRA registry verified.',
     specs: {
@@ -257,7 +257,7 @@ export const INITIAL_AUCTION_LOTS: AuctionLot[] = [
     ],
     sellerName: 'بازرگانی واردات دیجیتال ننگرهار',
     sellerKycTier: 2,
-    sellerVerified: true,
+    sellerVerified: false,
   },
   {
     id: 'lot-7',
@@ -278,9 +278,9 @@ export const INITIAL_AUCTION_LOTS: AuctionLot[] = [
     imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDATs-X3PPAHb5cCDeLuTDKdmN49LfaIJEUFj8HgwOJCLl0ieW4UVik1XPqSJCQ1JMh2cKHGzmQ_BmAJKh-yCwsoQUElLulmMbDZKrEShwbvUZoDYuVPrHWSL75ARJ07mT5BPdye1nyCZXGoaD7n87hJB7c3yxg5PgH33740m0gdIBW2BFTV8_erhu5AKU-OgrXWctbnc-tM-FQj7fkmMkI4RXKyWjzJWMD7uQFpKK_Fcd7D6UoKCo7',
     endTime: now + (35 * 60 * 1000), // 35m left
     isClosingSoon: false,
-    inspectorName: 'انجنیر صمیم بارکزی (برق و انرژی قندهار)',
+    inspectorName: 'نمونه نمایشی — بررسی نشده',
     inspectionGrade: 'A+',
-    escrowStatus: 'HesabPay Guaranteed',
+    escrowStatus: 'Demo listing — payment integration pending',
     description: 'سیستم کامل تولید برق آفتابی هایبرید شامل اینورتر سه فاز 30 کیلووات و پک بطری لیتیوم فسفات آهن با عمر 6,000 سایکل برای سردخانه‌ها و فابریکات پروسس میوه قندهار.',
     descriptionEn: 'Turnkey 30kW 3-phase hybrid solar station with 60kWh lithium iron phosphate battery cabinet. Ideal for cold storages and processing plants.',
     specs: {
@@ -297,7 +297,7 @@ export const INITIAL_AUCTION_LOTS: AuctionLot[] = [
     ],
     sellerName: 'شرکت انرژی تجدیدپذیر افغان سولر',
     sellerKycTier: 3,
-    sellerVerified: true,
+    sellerVerified: false,
   },
   {
     id: 'lot-8',
@@ -318,9 +318,9 @@ export const INITIAL_AUCTION_LOTS: AuctionLot[] = [
     imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuASqVD51D1pWxPs_zCCEFja5JCDXLJmDxEUhQY4ran-zET3CdDW_qYwO3JzTSm9V2T7JeZfIqoEDZtvlNoGda4hdUs0S0gWtpGNBmN3xDnJ9QBwPuGlHvO2Qrr0UAOgFLNJtcB0WZMwc0YOSW6wWtrwANoKpTGLiWal3WX1TpvjBiPUcaoM1vJ4IY2aKLAaH5yiXF5_GpU5Yt0_el9X7M_QcENm4RNpX7E82B7Z94b4f0JBfBzNjuom',
     endTime: now + (6 * 60 * 1000) + 50000, // 6m 50s left
     isClosingSoon: true,
-    inspectorName: 'استاد امین حسنی (اتحادیه سنگ‌تراشان بامیان)',
+    inspectorName: 'نمونه نمایشی — بررسی نشده',
     inspectionGrade: 'A+',
-    escrowStatus: 'HesabPay Guaranteed',
+    escrowStatus: 'Demo listing — payment integration pending',
     description: 'تخته بزرگ لاجورد با عیار معدن سرسنگ بدخشان، دارای رنگ آبی نیلی سلطنتی پررنگ با رگه‌های طلایی پیریت معدنی. کاملاً پالش و صیقل خورده، بدون ترک یا رزین مصنوعی.',
     descriptionEn: 'Ultra-rare Sar-e-Sang Badakhshan royal azure blue lapis lazuli display slab with prominent golden pyrite crystal veining. 32kg museum specimen.',
     specs: {
@@ -337,6 +337,6 @@ export const INITIAL_AUCTION_LOTS: AuctionLot[] = [
     ],
     sellerName: 'گروه سنگ‌های معدنی صلصال',
     sellerKycTier: 2,
-    sellerVerified: true,
+    sellerVerified: false,
   },
 ];
