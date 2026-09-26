@@ -18,7 +18,7 @@ create table if not exists users (
   password_hash text,
   full_name text not null,
   full_name_en text,
-  user_type text not null check (user_type in ('buyer','seller','business','staff')),
+  user_type text not null check (user_type in ('buyer','customer','seller','business','staff')),
   status text not null default 'pending_verification' check (status in ('active','suspended','pending_verification','blocked')),
   kyc_status text not null default 'unverified' check (kyc_status in ('unverified','pending','verified','rejected','resubmit_required')),
   tazkira_number text,
@@ -202,6 +202,7 @@ insert into roles(key, name_en, name_fa, permissions, is_system) values
   ('logistics','Logistics','لوژستیک','["logistics.*","users.read"]'::jsonb,true),
   ('moderator','Moderator','ناظر','["users.read","auctions.read","fraud.read"]'::jsonb,true),
   ('buyer','Buyer','خریدار','["bidding.place","watchlist.manage"]'::jsonb,true),
+  ('customer','Customer','مشتری','["watchlist.manage","orders.read"]'::jsonb,true),
   ('seller','Seller','فروشنده','["auctions.submit","seller.manage"]'::jsonb,true),
   ('business','Business Seller','فروشنده تجارتی','["auctions.submit","seller.manage","business.manage"]'::jsonb,true)
 on conflict (key) do update
@@ -209,3 +210,23 @@ set name_en = excluded.name_en,
     name_fa = excluded.name_fa,
     permissions = excluded.permissions,
     is_system = excluded.is_system;
+
+
+insert into platform_settings(key, value) values
+  ('fees.buyer_premium_pct', '5'::jsonb),
+  ('fees.seller_commission_schedule', '[
+    {"min":0,"max":9999,"pct":20},
+    {"min":10000,"max":99999,"pct":15},
+    {"min":100000,"max":499999,"pct":10},
+    {"min":500000,"max":1999999,"pct":10},
+    {"min":2000000,"max":null,"pct":null,"negotiatedMinPct":5,"negotiatedMaxPct":10}
+  ]'::jsonb),
+  ('fees.seller_listing_afn', '0'::jsonb),
+  ('fees.unsold_commission_pct', '0'::jsonb),
+  ('fees.reserve_option_pct_of_reserve', '20'::jsonb),
+  ('fees.featured_listing_afn', '{"min":250,"max":500}'::jsonb),
+  ('fees.storage_afn', '{"min":50,"max":500,"basis":"daily_or_weekly_by_location"}'::jsonb),
+  ('fees.delivery', '{"mode":"separate"}'::jsonb),
+  ('fees.appraisal', '{"mode":"specialist_quote"}'::jsonb),
+  ('fees.payment_processing', '{"mode":"provider_actual_or_included"}'::jsonb)
+on conflict (key) do update set value = excluded.value, updated_at = now();
