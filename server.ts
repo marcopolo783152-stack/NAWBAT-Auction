@@ -432,9 +432,12 @@ export async function createApp(serveFrontend = true) {
   });
 
   app.post('/api/admin/users', async (req: Request, res: Response) => {
-    const { fullName, fullNameEn, email, phone, userType, roleId, tazkiraNumber } = req.body || {};
+    const { fullName, fullNameEn, email, phone, userType, roleId, tazkiraNumber, temporaryPassword } = req.body || {};
     if (!fullName || !userType || (!email && !phone)) {
       return res.status(400).json({ error: 'fullName, userType, and an email or phone number are required.' });
+    }
+    if (userType === 'staff' && (typeof temporaryPassword !== 'string' || temporaryPassword.length < 10)) {
+      return res.status(400).json({ error: 'Staff accounts require a temporary password of at least 10 characters.' });
     }
 
     if (hasPersistentDatabase()) {
@@ -447,6 +450,7 @@ export async function createApp(serveFrontend = true) {
           userType,
           tazkiraNumber,
           roleKey: typeof roleId === 'string' ? roleId.replace(/^role-/, '') : undefined,
+          temporaryPassword: typeof temporaryPassword === 'string' ? temporaryPassword : undefined,
         });
         db.addAuditLog('NAWBAT Administrator', 'CREATE_USER', 'user_management', user?.id || 'database-user', `Created ${userType} account for ${fullName}`);
         return res.status(201).json({ success: true, user });
