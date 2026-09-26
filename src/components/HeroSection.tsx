@@ -47,14 +47,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   ];
 
   return (
-    <section className="w-full px-4 lg:px-8 py-10 lg:py-16 bg-[#f7f9ff] relative overflow-hidden border-b border-[#003a2f]/5">
+    <section className="w-full px-4 lg:px-8 py-8 lg:py-12 bg-[linear-gradient(180deg,#ffffff_0%,#f7fbf9_58%,#f7f9ff_100%)] relative overflow-hidden border-b border-[#003a2f]/5">
       {/* Decorative ambient gradient glows */}
       <div className="absolute -top-32 -left-32 w-96 h-96 bg-[#afefdc]/30 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-[#a5d4fd]/30 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="max-w-5xl mx-auto flex flex-col items-center text-center relative z-10">
+      <div className="max-w-6xl mx-auto flex flex-col items-center text-center relative z-10 rounded-[2rem] border border-[#003a2f]/8 bg-white/70 backdrop-blur-sm px-4 sm:px-8 lg:px-14 py-8 lg:py-12 shadow-[0_20px_60px_rgba(0,58,47,0.08)]">
         {/* Eyebrow Institutional Badge */}
-        <div className="inline-flex items-center gap-2 bg-[#dde9f9] text-[#003a2f] px-4 py-1.5 rounded-full shadow-xs mb-4">
+        <div className="inline-flex items-center gap-2 bg-[#eef8f4] text-[#003a2f] px-4 py-2 rounded-full shadow-sm border border-[#003a2f]/10 mb-5">
           <Gavel className="w-4 h-4 text-[#003a2f]" />
           <span className="text-xs font-bold tracking-tight">{t.heroBadge}</span>
           <span className="w-1.5 h-1.5 rounded-full bg-[#0b5345]" />
@@ -62,7 +62,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         </div>
 
         {/* Main Headline */}
-        <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#111d27] tracking-tight leading-tight max-w-4xl mb-4">
+        <h1 className="font-serif text-3xl sm:text-4xl lg:text-[3.35rem] font-bold text-[#10251f] tracking-[-0.025em] leading-[1.14] max-w-4xl mb-4">
           {t.heroTitle}
         </h1>
 
@@ -72,7 +72,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         </p>
 
         {/* Search Command Box */}
-        <div className="w-full max-w-3xl bg-white rounded-xl shadow-lg border border-[#003a2f]/10 p-2 mb-6">
+        <div className="w-full max-w-4xl bg-white rounded-2xl shadow-[0_12px_34px_rgba(0,58,47,0.10)] border border-[#003a2f]/10 p-2.5 mb-7">
           <div className="flex flex-col sm:flex-row items-stretch gap-2">
             <div className="flex-1 flex items-center px-3 bg-[#ecf4ff] rounded-lg">
               <Search className="w-5 h-5 text-[#707975] shrink-0" />

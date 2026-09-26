@@ -88,21 +88,47 @@ export const Header: React.FC<HeaderProps> = ({
   ];
 
   return (
-    <header className="sticky top-0 w-full z-40 bg-[#f7f9ff]/95 backdrop-blur-md border-b border-[#003a2f]/10 shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
+    <header className="sticky top-0 w-full z-40 bg-white/95 backdrop-blur-xl border-b border-[#003a2f]/10 shadow-[0_8px_30px_rgba(0,58,47,0.08)]">
+      {/* NAWBAT Brand Banner */}
+      <div className="nawbat-brand-banner">
+        <div className="nawbat-brand-orb nawbat-brand-orb-one" />
+        <div className="nawbat-brand-orb nawbat-brand-orb-two" />
+        <button
+          type="button"
+          onClick={() => onTabChange('home')}
+          className="relative z-10 w-full max-w-[1500px] mx-auto px-4 lg:px-8 py-3.5 md:py-4 flex items-center justify-between gap-4 text-start group"
+          aria-label={currentLang === 'en' ? 'Go to NAWBAT home' : 'رفتن به صفحه اصلی نوبت'}
+        >
+          <div className="nawbat-logo-panel">
+            <Logo size="lg" />
+          </div>
+
+          <div className="hidden lg:flex flex-col items-end text-white/95 max-w-xl">
+            <span className="text-[11px] uppercase tracking-[0.24em] font-semibold text-[#d8fff2]">
+              Afghanistan Online Auction Marketplace
+            </span>
+            <span className="text-sm xl:text-base font-bold mt-1 leading-relaxed">
+              {currentLang === 'en'
+                ? 'A simple, trusted place to discover and bid on auctions across Afghanistan'
+                : currentLang === 'ps'
+                ? 'په افغانستان کې د آنلاین لیلامونو لپاره ساده او باوري بازار'
+                : 'بازار ساده و قابل اعتماد برای دیدن و پیشنهاد دادن در مزایده‌های افغانستان'}
+            </span>
+          </div>
+
+          <div className="hidden md:flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 border border-white/15 text-white text-[11px] font-semibold backdrop-blur">
+            <span className="w-2 h-2 rounded-full bg-[#afefdc] shadow-[0_0_12px_rgba(175,239,220,0.9)]" />
+            <span>{currentLang === 'en' ? 'Dari • Pashto • English' : 'دری • پښتو • English'}</span>
+          </div>
+        </button>
+      </div>
+
       {/* Top Bar Row */}
       <div className="w-full px-4 lg:px-8 py-2.5">
         <div className="flex items-center justify-between gap-3">
-          {/* Brand & Province Selector */}
+          {/* Province Quick Filter */}
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => onTabChange('home')} 
-              className="text-right focus:outline-none cursor-pointer group"
-            >
-              <Logo size="md" />
-            </button>
-
-            {/* Province Quick Filter Dropdown */}
-            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-[#ecf4ff] rounded-lg text-[#111d27] border border-[#d7e4f3] shadow-xs">
+            <div className="hidden lg:flex items-center gap-1.5 px-3 py-2 bg-[#f4f8f6] rounded-xl text-[#111d27] border border-[#d8e3de] shadow-xs">
               <MapPin className="w-4 h-4 text-[#326286]" />
               <select
                 value={selectedProvince}
@@ -119,7 +145,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Desktop Search Command Input */}
-          <div className="flex-1 max-w-xl mx-2 hidden md:flex items-center bg-white rounded-lg p-1 border border-[#003a2f]/15 shadow-xs">
+          <div className="flex-1 max-w-2xl mx-2 hidden md:flex items-center bg-[#fbfdfc] rounded-xl p-1.5 border border-[#003a2f]/15 shadow-[0_4px_18px_rgba(0,58,47,0.05)] focus-within:border-[#0b5345]/40 focus-within:shadow-[0_6px_24px_rgba(0,58,47,0.10)] transition-all">
             <select
               value={selectedCategory}
               onChange={(e) => {
@@ -150,7 +176,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               onClick={onSearchSubmit}
-              className="flex items-center gap-1.5 bg-[#003a2f] hover:bg-[#0b5345] text-white px-4 py-1.5 rounded text-xs font-semibold transition-colors shadow-xs"
+              className="flex items-center gap-1.5 bg-[#003a2f] hover:bg-[#0b5345] active:scale-[0.98] text-white px-4 py-2 rounded-lg text-xs font-semibold transition-all shadow-sm"
             >
               <Search className="w-3.5 h-3.5" />
               <span>{t.searchBtn}</span>
@@ -191,7 +217,7 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Sell a Lot CTA */}
             <button
               onClick={onOpenSubmitLot}
-              className="inline-flex items-center gap-1.5 bg-[#0b5345] hover:bg-[#003a2f] text-white transition-colors px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-1.5 bg-[#0b5345] hover:bg-[#003a2f] active:scale-[0.98] text-white transition-all px-4 py-2 rounded-xl text-xs font-semibold shadow-sm cursor-pointer"
             >
               <PlusCircle className="w-3.5 h-3.5" />
               <span>{t.sellItem}</span>
@@ -293,7 +319,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Second Row: Navigation links */}
-      <nav className="w-full px-4 lg:px-8 border-t border-[#003a2f]/5 bg-[#f7f9ff]/60">
+      <nav className="w-full px-4 lg:px-8 border-t border-[#003a2f]/8 bg-white/80 backdrop-blur-xl">
         <div className="flex items-center justify-between gap-3 overflow-x-auto py-1.5">
           <div className="flex items-center gap-1.5 whitespace-nowrap">
             {navItems.map((item, idx) => {

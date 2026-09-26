@@ -29,35 +29,35 @@ export const Footer: React.FC<FooterProps> = ({ currentLang, onLanguageChange })
           <div className="flex flex-col gap-3">
             <Logo size="md" />
             <p className="text-xs leading-relaxed text-[#3f4945]">
-              اولین زیرساخت رسمی، اعتبارسنجی شده و تایید هویت یافته مزایده‌های آنلاین در افغانستان با همکاری امانی و بانکی HesabPay تحت نظارت د افغانستان بانک.
+              بازار آنلاین مزایده نوبت برای خرید و فروش کالاها در افغانستان. اتصال پرداخت و بررسی هویت فقط پس از تکمیل و تایید رسمی سرویس‌های مربوط فعال می‌شود.
             </p>
             <div className="flex items-center gap-1.5 text-[#003a2f] text-xs font-semibold pt-1">
               <ShieldCheck className="w-4 h-4 text-[#0b5345]" />
-              <span>ضمانت اصالت و سلامت تمامی اموال و اسناد</span>
+              <span>وضعیت بررسی هر کالا در صفحه همان مزایده نمایش داده می‌شود</span>
             </div>
           </div>
 
           {/* Column 2: Guarantees */}
           <div className="flex flex-col gap-3">
             <h3 className="font-serif text-sm font-bold text-[#111d27]">
-              تضمین‌های سازمانی و امنیتی
+              امنیت و کنترل پلتفرم
             </h3>
             <ul className="flex flex-col gap-2 text-xs">
               <li className="flex items-center gap-2">
                 <Wallet className="w-3.5 h-3.5 text-[#326286] shrink-0" />
-                <span>تسویه و سپرده‌گذاری رسمی امانی HesabPay</span>
+                <span>اتصال HesabPay در حال آماده‌سازی</span>
               </li>
               <li className="flex items-center gap-2">
                 <Building className="w-3.5 h-3.5 text-[#326286] shrink-0" />
-                <span>تفتیش فیزیکی گدام‌ها در کابل و هرات</span>
+                <span>بررسی کالا فقط در مواردی که گزارش معتبر ثبت شده باشد</span>
               </li>
               <li className="flex items-center gap-2">
                 <BadgeCheck className="w-3.5 h-3.5 text-[#326286] shrink-0" />
-                <span>احراز هویت بیومتریک تذکره الکترونیکی (KYC)</span>
+                <span>جریان بررسی هویت و اسناد KYC</span>
               </li>
               <li className="flex items-center gap-2">
                 <Timer className="w-3.5 h-3.5 text-[#326286] shrink-0" />
-                <span>مقررات ضد دزدی ثانیه‌ای (Anti-Sniping 2-min)</span>
+                <span>تمدید خودکار زمان برای پیشنهادهای لحظات پایانی</span>
               </li>
             </ul>
           </div>
@@ -70,18 +70,18 @@ export const Footer: React.FC<FooterProps> = ({ currentLang, onLanguageChange })
             <ul className="flex flex-col gap-2 text-xs">
               <li>
                 <a href="#dispute" className="hover:text-[#003a2f] transition-colors flex items-center gap-1">
-                  <span>مرکز حل منازعات و داوری (Dispute Center)</span>
+                  <span>مرکز حل اختلاف و پشتیبانی</span>
                   <ExternalLink className="w-3 h-3 text-[#707975]" />
                 </a>
               </li>
               <li>
                 <a href="#escrow-terms" className="hover:text-[#003a2f] transition-colors">
-                  قوانین حراجی و سپرده احتیاطی (Escrow Terms)
+                  قوانین حراج و پرداخت
                 </a>
               </li>
               <li>
                 <a href="#rates" className="hover:text-[#003a2f] transition-colors">
-                  تعرفه‌های کارشناسی و ارزیابی عتیقه‌جات
+                  هزینه‌ها و خدمات ارزیابی
                 </a>
               </li>
               <li>
@@ -100,18 +100,18 @@ export const Footer: React.FC<FooterProps> = ({ currentLang, onLanguageChange })
           {/* Column 4: Contact Support Kabul */}
           <div className="flex flex-col gap-3">
             <h3 className="font-serif text-sm font-bold text-[#111d27]">
-              ارتباط با مرکز پشتیبانی کابل
+              پشتیبانی نوبت
             </h3>
             <p className="text-xs text-[#3f4945]">
-              پاسخگویی 24 ساعته در هفت روز هفته برای تایید معاملات کلان
+              اطلاعات تماس رسمی پس از راه‌اندازی نهایی در این بخش منتشر می‌شود.
             </p>
             <div className="flex items-center gap-2 text-xs font-semibold text-[#111d27]">
               <Phone className="w-4 h-4 text-[#003a2f]" />
-              <span className="font-mono dir-ltr">+93 (0) 20 221 4400</span>
+              <span className="font-mono dir-ltr">تماس: در حال تنظیم</span>
             </div>
             <div className="flex items-center gap-2 text-xs font-semibold text-[#111d27]">
               <Mail className="w-4 h-4 text-[#003a2f]" />
-              <span className="font-mono">support@nawbat.af</span>
+              <span className="font-mono">ایمیل: در حال تنظیم</span>
             </div>
 
             <div className="mt-1 flex items-center gap-1.5 text-xs">
@@ -147,7 +147,7 @@ export const Footer: React.FC<FooterProps> = ({ currentLang, onLanguageChange })
         {/* Legal Disclaimer & Copyright */}
         <div className="pt-6 border-t border-[#bfc9c4]/60 flex flex-col md:flex-row items-center justify-between gap-3 text-center md:text-right text-xs">
           <span>
-            © 1403 نوبت افغانستان (Nawbat.af) - تمامی حقوق تحت قانون تجارت الکترونیک و حمایت مستهلک محفوظ است.
+            © NAWBAT Afghanistan. شرایط حقوقی و سیاست‌های نهایی پیش از راه‌اندازی عمومی منتشر می‌شوند.
           </span>
           <div className="flex items-center gap-4 text-xs font-medium">
             <a href="#terms" className="hover:text-[#111d27] transition-colors">
@@ -157,7 +157,7 @@ export const Footer: React.FC<FooterProps> = ({ currentLang, onLanguageChange })
               حریم خصوصی
             </a>
             <a href="#hesabpay-rules" className="hover:text-[#111d27] transition-colors">
-              مقررات HesabPay
+              راهنمای پرداخت
             </a>
           </div>
         </div>

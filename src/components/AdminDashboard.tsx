@@ -104,8 +104,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     minDepositRequirementAFN: 50000,
     antiSnipingMinutes: 3,
     defaultAuctionDays: 7,
-    hesabPayMerchantId: 'HESAB-AFG-99201',
-    hesabPaySandboxMode: false,
+    hesabPayMerchantId: '',
+    hesabPaySandboxMode: true,
     autoFlagShillBids: true,
     maintenanceMode: false,
   });
@@ -239,7 +239,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleIssueRefund = async (invoiceId: string) => {
     await adminApi.issueRefund(invoiceId, 'برگشت وجه به دستور اداره حکمیت');
     setInvoicesList(invoicesList.map(i => i.id === invoiceId ? { ...i, paymentStatus: 'refunded' } : i));
-    showToast('مبلغ سپرده امانی به کیف‌پول خریدار عودت داده شد ✓');
+    showToast('درخواست بازپرداخت ثبت شد. اجرای مالی فقط پس از پاسخ تاییدشده ارائه‌دهنده پرداخت انجام می‌شود.');
     loadData();
   };
 
@@ -339,7 +339,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </span>
             </div>
             <p className="text-xs text-[#afefdc]/80 font-mono">
-              NAWBAT National Auction Executive Operations & Escrow Ledger
+              NAWBAT Auction Operations & Financial Control
             </p>
           </div>
         </div>
@@ -348,7 +348,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div className="flex items-center gap-3 flex-wrap">
           <div className="hidden md:flex items-center gap-2 bg-[#0b5345] px-3 py-1.5 rounded-lg border border-[#afefdc]/20 text-xs">
             <span className="w-2 h-2 rounded-full bg-[#afefdc] animate-pulse" />
-            <span className="text-[#afefdc] font-mono font-semibold">HesabPay Escrow: Connected</span>
+            <span className="text-[#afefdc] font-mono font-semibold">HesabPay: integration status</span>
             <span className="text-white/40">|</span>
             <span className="text-[#afefdc] font-mono font-semibold">Anti-Snip: Active (3m)</span>
           </div>
@@ -478,11 +478,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   { label: 'مزایده‌های رو به اختتام', value: overviewMetrics?.auctionsEndingToday || lots.filter(l => l.isClosingSoon).length, icon: Clock, color: 'text-rose-600', bg: 'bg-rose-50' },
                   { label: 'مجموع پیشنهادات ثبت‌شده', value: overviewMetrics?.totalBids || lots.reduce((a, b) => a + (b.totalBids || 0), 0), icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50' },
                   { label: 'تراکنش‌های تایید شده', value: overviewMetrics?.payments || invoicesList.length, icon: CreditCard, color: 'text-cyan-600', bg: 'bg-cyan-50' },
-                  { label: 'تسویه‌های در انتظار (AFN)', value: `${((overviewMetrics?.pendingPayoutsAFN || 1820000) / 1000).toLocaleString('en-US')}k`, icon: DollarSign, color: 'text-orange-600', bg: 'bg-orange-50' },
+                  { label: 'تسویه‌های در انتظار (AFN)', value: `${((overviewMetrics?.pendingPayoutsAFN || 0) / 1000).toLocaleString('en-US')}k`, icon: DollarSign, color: 'text-orange-600', bg: 'bg-orange-50' },
                   { label: 'شکایات تحت داوری', value: overviewMetrics?.disputes || disputesList.filter(d => d.status === 'under_review').length, icon: Scale, color: 'text-red-600', bg: 'bg-red-50' },
                   { label: 'هشدارهای کشف تقلب', value: overviewMetrics?.fraudAlerts || fraudFlagsList.filter(f => f.status === 'investigating').length, icon: AlertOctagon, color: 'text-red-700', bg: 'bg-red-100' },
                   { label: 'تذکره‌های در نوبت تایید', value: overviewMetrics?.kycWaitingReview || kycList.filter(k => k.status === 'pending').length, icon: FileCheck, color: 'text-amber-700', bg: 'bg-amber-100' },
-                  { label: 'درآمد خالص پلتفرم (AFN)', value: `${((overviewMetrics?.revenueAFN || 120625) / 1000).toLocaleString('en-US')}k`, icon: Sparkles, color: 'text-[#003a2f]', bg: 'bg-[#afefdc]/30' },
+                  { label: 'درآمد خالص پلتفرم (AFN)', value: `${((overviewMetrics?.revenueAFN || 0) / 1000).toLocaleString('en-US')}k`, icon: Sparkles, color: 'text-[#003a2f]', bg: 'bg-[#afefdc]/30' },
                 ].map((kpi, idx) => {
                   const Icon = kpi.icon;
                   return (
@@ -507,15 +507,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <div className="flex items-center gap-2">
                     <Lock className="w-4 h-4 text-[#afefdc]" />
                     <span className="font-extrabold text-sm text-[#afefdc]">
-                      وضعیت قفل سپرده امانی حساب‌پی (Escrow Ledger Protection)
+                      وضعیت پرداخت و تسویه HesabPay
                     </span>
                   </div>
                   <p className="text-xs text-white/80 mt-1 max-w-xl leading-relaxed">
-                    تمامی وجوه واریزی خریداران بر اساس قانون تجارت الکترونیک افغانستان در حساب واسط تضمین‌شده حساب‌پی مسدود است و تنها پس از اسکن کیوآر تحویل کالا به حساب فروشنده واریز می‌شود.
+                    این صفحه وضعیت تراکنش‌های ثبت‌شده را نمایش می‌دهد. نگهداری یا آزادسازی واقعی وجه فقط پس از اتصال رسمی و تاییدشده HesabPay انجام می‌شود.
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs text-white/70 block">مجموع وجوه تحت حفاظت امانی:</span>
+                  <span className="text-xs text-white/70 block">مجموع مبالغ ثبت‌شده در وضعیت نگهداری:</span>
                   <span className="font-mono text-2xl font-black text-[#afefdc]">
                     14,850,000 AFN
                   </span>
@@ -1152,7 +1152,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </td>
                           <td className="p-3">
                             <span className="bg-[#afefdc]/30 text-[#003a2f] font-bold text-[10px] px-2 py-0.5 rounded">
-                              Tier 3 Corporate Verified
+                              Business verification status
                             </span>
                           </td>
                           <td className="p-3 font-mono font-bold text-[#326286]">7.5%</td>
@@ -1161,7 +1161,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </td>
                           <td className="p-3">
                             <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
-                              حساب HesabPay متصل ✓
+                              وضعیت اتصال HesabPay
                             </span>
                           </td>
                           <td className="p-3 text-center">
@@ -1189,7 +1189,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div className="flex flex-col gap-4 animate-in fade-in">
               <div className="bg-white p-4 rounded-2xl border border-[#003a2f]/10 shadow-xs">
                 <h3 className="font-extrabold text-sm text-[#003a2f]">مدیریت خریداران و صلاحیت پیشنهاددهی (Buyer Eligibility)</h3>
-                <p className="text-xs text-[#707975] mt-0.5">کنترل سقف اعتبار، واریز دیپازیت تضمینی و فاکتورهای برنده شده</p>
+                <p className="text-xs text-[#707975] mt-0.5">مدیریت محدودیت‌های حساب، فاکتورها و وضعیت پرداخت</p>
               </div>
 
               <div className="bg-white rounded-2xl border border-[#003a2f]/10 shadow-xs overflow-hidden">
@@ -1198,7 +1198,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <tr>
                       <th className="p-3">خریدار</th>
                       <th className="p-3">تذکره</th>
-                      <th className="p-3">سپرده در قفل (Escrow)</th>
+                      <th className="p-3">مبلغ در وضعیت نگهداری</th>
                       <th className="p-3">لوط‌های برنده شده</th>
                       <th className="p-3">صلاحیت بیدینگ</th>
                       <th className="p-3 text-center">اقدام</th>
@@ -1217,7 +1217,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             {buyer.tazkiraNumber}
                           </td>
                           <td className="p-3 font-mono font-bold text-[#003a2f]">
-                            {(buyer.escrowLockedAFN || 1820000).toLocaleString('en-US')} AFN
+                            {(buyer.escrowLockedAFN || 0).toLocaleString('en-US')} AFN
                           </td>
                           <td className="p-3 font-bold text-center">
                             1 لوط برتر
@@ -1252,7 +1252,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div className="flex flex-col gap-4 animate-in fade-in">
               <div className="bg-white p-4 rounded-2xl border border-[#003a2f]/10 shadow-xs flex items-center justify-between">
                 <div>
-                  <h3 className="font-extrabold text-sm text-[#003a2f]">مرکز تایید تذکره الکترونیکی و هویت بیومتریک (NSIA e-KYC)</h3>
+                  <h3 className="font-extrabold text-sm text-[#003a2f]">مرکز بررسی هویت و اسناد KYC</h3>
                   <p className="text-xs text-[#707975] mt-0.5">تطبیق تصویر چهره با چیپ الکترونیکی تذکره و جوازهای اتاق تجارت</p>
                 </div>
                 <span className="bg-[#afefdc]/30 text-[#003a2f] font-mono font-bold text-xs px-2.5 py-1 rounded-lg">
@@ -1308,7 +1308,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         onClick={() => handleKycDecision(caseItem.id, 'approved')}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
                       >
-                        تایید رسمی هویت ✓
+                        تایید داخلی هویت ✓
                       </button>
                       <button
                         onClick={() => {
@@ -1333,9 +1333,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div className="flex flex-col gap-4 animate-in fade-in">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="bg-white p-4 rounded-2xl border border-[#003a2f]/10 shadow-xs">
-                  <span className="text-[11px] text-[#707975] font-bold block">مجموع وجوه امانی مسدود</span>
+                  <span className="text-[11px] text-[#707975] font-bold block">مجموع مبالغ در وضعیت نگهداری</span>
                   <span className="text-xl font-mono font-black text-[#003a2f] block mt-1">1,820,000 AFN</span>
-                  <span className="text-[10px] text-emerald-700 mt-1 block">HesabPay Locked</span>
+                  <span className="text-[10px] text-emerald-700 mt-1 block">Payment hold status</span>
                 </div>
                 <div className="bg-white p-4 rounded-2xl border border-[#003a2f]/10 shadow-xs">
                   <span className="text-[11px] text-[#707975] font-bold block">کارمزد خریدار (Buyer Premium 5%)</span>
@@ -1352,7 +1352,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {/* Invoices List */}
               <div className="bg-white rounded-2xl border border-[#003a2f]/10 shadow-xs overflow-hidden">
                 <div className="p-4 border-b border-[#003a2f]/10 font-bold text-xs text-[#003a2f]">
-                  فاکتورهای رسمی و تسویه‌های مالی (Official Invoices & Escrows)
+                  فاکتورها و وضعیت‌های مالی
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-right rtl:text-right ltr:text-left text-xs border-collapse">
@@ -1395,7 +1395,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 ? 'bg-red-100 text-red-800'
                                 : 'bg-[#afefdc]/30 text-[#003a2f]'
                             }`}>
-                              {inv.paymentStatus === 'settled' ? 'تسویه شده ✓' : inv.paymentStatus === 'refunded' ? 'برگشت داده شده ✕' : 'سپرده امانی قفل'}
+                              {inv.paymentStatus === 'settled' ? 'تسویه شده ✓' : inv.paymentStatus === 'refunded' ? 'برگشت داده شده ✕' : 'در انتظار تسویه'}
                             </span>
                           </td>
                           <td className="p-3 text-center">
@@ -1535,7 +1535,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div className="flex flex-col gap-4 animate-in fade-in">
               <div className="bg-white p-4 rounded-2xl border border-[#003a2f]/10 shadow-xs flex items-center justify-between">
                 <div>
-                  <h3 className="font-extrabold text-sm text-[#003a2f]">مرکز حل اختلاف و داوری رسمی مزایده‌ها (Arbitration Chamber)</h3>
+                  <h3 className="font-extrabold text-sm text-[#003a2f]">مرکز حل اختلاف و پشتیبانی</h3>
                   <p className="text-xs text-[#707975] mt-0.5">رسیدگی به شکایات مغایرت کالا، تأخیر تحویل یا عیب مخفی بر اساس اسناد کارشناسی</p>
                 </div>
               </div>
@@ -1578,7 +1578,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <div className="flex items-center gap-1.5 flex-1">
                         <input
                           type="text"
-                          placeholder="ارسال پیام و دستور داوری رسمی..."
+                          placeholder="ارسال پیام پشتیبانی یا تصمیم داخلی..."
                           value={disputeReplyText}
                           onChange={(e) => setDisputeReplyText(e.target.value)}
                           className="flex-1 bg-[#f7f9ff] border border-[#003a2f]/15 rounded-lg px-3 py-1.5 text-xs focus:outline-none"
@@ -1806,7 +1806,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     onChange={(e) => setPlatformSettings({ ...platformSettings, hesabPayMerchantId: e.target.value })}
                     className="w-full bg-[#f7f9ff] border border-[#003a2f]/15 rounded-lg p-2 font-mono focus:outline-none"
                   />
-                  <span className="text-[10px] text-[#707975] mt-1 block">HesabPay Instant QR Settlement API Key</span>
+                  <span className="text-[10px] text-[#707975] mt-1 block">HesabPay API credential (server environment only)</span>
                 </div>
 
                 <div className="md:col-span-2 flex items-center justify-between pt-3 border-t border-[#003a2f]/10">

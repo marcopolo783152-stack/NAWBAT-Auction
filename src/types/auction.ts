@@ -43,7 +43,7 @@ export interface AuctionLot {
   status?: 'draft' | 'pending_approval' | 'scheduled' | 'live' | 'paused' | 'ended' | 'sold' | 'unsold' | 'cancelled';
   inspectorName: string;
   inspectionGrade: 'A+' | 'A' | 'B+' | 'B';
-  escrowStatus: 'HesabPay Guaranteed' | 'Verified Escrow';
+  escrowStatus: 'payment_pending' | 'payment_ready' | 'payment_verified' | string;
   description: string;
   descriptionEn: string;
   specs: Record<string, string>;

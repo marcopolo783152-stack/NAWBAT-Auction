@@ -38,7 +38,7 @@ export const BidModal: React.FC<BidModalProps> = ({
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
 
-  // 5% refundable escrow deposit requirement
+  // Display-only deposit estimate. No funds are locked until a verified payment integration confirms it.
   const escrowDeposit = Math.round(bidAmount * 0.05);
 
   const handleIncrement = (extra: number) => {
@@ -49,7 +49,7 @@ export const BidModal: React.FC<BidModalProps> = ({
     if (bidAmount < minValidBid) return;
     setIsProcessing(true);
 
-    // Simulate HesabPay escrow lock & network broadcast
+    // Local preview only. Server-authoritative bidding/payment integration must confirm before production settlement.
     setTimeout(() => {
       onSubmitBid(lot.id, bidAmount, isProxy, isProxy ? maxProxyAmount : undefined);
       setIsProcessing(false);
@@ -94,7 +94,7 @@ export const BidModal: React.FC<BidModalProps> = ({
             </div>
             <h4 className="font-serif text-lg font-bold text-[#003a2f]">پیشنهاد شما با موفقیت ثبت گردید!</h4>
             <p className="text-xs text-[#3f4945] max-w-xs">
-              سپرده امانی در HesabPay با شناسه رهگیری قفل شد و شما هم‌اکنون بالاترین پیشنهاددهنده هستید.
+              پیشنهاد شما در نسخه نمایشی ثبت شد. هیچ وجهی در HesabPay قفل نشده است تا اتصال رسمی پرداخت فعال گردد.
             </p>
           </div>
         ) : (
@@ -195,7 +195,7 @@ export const BidModal: React.FC<BidModalProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-[#065043]">
                   <CreditCard className="w-4 h-4 text-[#003a2f]" />
-                  <span>سپرده امانی تضمینی 5% (HesabPay Escrow)</span>
+                  <span>برآورد سپرده 5% (در انتظار اتصال پرداخت)</span>
                 </div>
                 <span className="font-mono text-xs font-bold text-[#003a2f]">
                   {escrowDeposit.toLocaleString('en-US')} AFN
@@ -205,7 +205,7 @@ export const BidModal: React.FC<BidModalProps> = ({
               <div className="text-[11px] text-[#065043] flex items-start gap-1 leading-relaxed">
                 <Lock className="w-3.5 h-3.5 text-[#003a2f] shrink-0 mt-0.5" />
                 <span>
-                  این مبلغ موقتاً در کیف‌پول HesabPay قفل می‌گردد. در صورت واگذاری به رقیب، سپرده بلافاصله و 100% آزاد می‌شود.
+                  این مبلغ فعلاً فقط یک برآورد نمایشی است. قفل یا آزادسازی واقعی وجه بعد از اتصال رسمی و تاییدشده پرداخت فعال می‌شود.
                 </span>
               </div>
 
@@ -224,7 +224,7 @@ export const BidModal: React.FC<BidModalProps> = ({
               {isProcessing ? (
                 <span className="flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  در حال تایید با حساب‌پی (HesabPay)...
+                  در حال ثبت پیشنهاد آزمایشی...
                 </span>
               ) : (
                 <span className="flex items-center gap-2">

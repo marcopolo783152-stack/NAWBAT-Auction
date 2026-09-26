@@ -164,27 +164,27 @@ export const MobileAppView: React.FC<MobileAppViewProps> = ({
               <div className="p-4 flex flex-col gap-4">
                 <div className="bg-white p-4 rounded-2xl border border-[#003a2f]/10 shadow-xs flex items-center gap-3">
                   <div className="w-14 h-14 rounded-full bg-[#003a2f] text-white flex items-center justify-center font-serif text-xl font-bold ring-4 ring-[#afefdc]/50">
-                    AR
+                    NA
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-serif font-bold text-sm text-[#111d27]">احمدشاه رضایی</h3>
-                    <span className="text-[11px] text-[#326286] font-medium block">تذکره الکترونیکی: 1402-9982</span>
+                    <h3 className="font-serif font-bold text-sm text-[#111d27]">مهمان</h3>
+                    <span className="text-[11px] text-[#326286] font-medium block">حساب کاربری هنوز وارد نشده</span>
                     <span className="inline-flex items-center gap-1 bg-[#afefdc] text-[#065043] text-[10px] px-2 py-0.5 rounded-full font-bold mt-1">
                       <ShieldCheck className="w-3 h-3 text-[#003a2f]" />
-                      KYC Tier 2 Verified
+                      ورود کاربر لازم است
                     </span>
                   </div>
                 </div>
 
                 <div className="bg-[#ecf4ff] p-4 rounded-2xl border border-[#326286]/20">
-                  <span className="text-xs text-[#3f4945] block mb-1">موجودی کیف‌پول HesabPay:</span>
+                  <span className="text-xs text-[#3f4945] block mb-1">موجودی HesabPay پس از اتصال:</span>
                   <div className="flex items-baseline justify-between">
-                    <span className="font-mono text-2xl font-bold text-[#003a2f]">2,450,000</span>
+                    <span className="font-mono text-2xl font-bold text-[#003a2f]">0</span>
                     <span className="text-xs text-[#3f4945]">AFN</span>
                   </div>
                   <div className="mt-3 pt-2 border-t border-[#326286]/20 flex items-center justify-between text-xs text-[#326286] font-semibold">
-                    <span>سپرده‌های قفل‌شده در مزایده:</span>
-                    <span className="font-mono font-bold text-[#ba1a1a]">145,000 AFN</span>
+                    <span>مبالغ در وضعیت نگهداری:</span>
+                    <span className="font-mono font-bold text-[#ba1a1a]">0 AFN</span>
                   </div>
                 </div>
 
@@ -198,11 +198,11 @@ export const MobileAppView: React.FC<MobileAppViewProps> = ({
                     <ChevronLeft className="w-4 h-4 text-[#707975] rtl:rotate-0 ltr:rotate-180" />
                   </div>
                   <div className="p-3.5 flex items-center justify-between hover:bg-[#f7f9ff] cursor-pointer">
-                    <span>تاریخچه تراکنش‌های HesabPay</span>
+                    <span>تاریخچه پرداخت‌ها (پس از ورود)</span>
                     <ChevronLeft className="w-4 h-4 text-[#707975] rtl:rotate-0 ltr:rotate-180" />
                   </div>
                   <div className="p-3.5 flex items-center justify-between hover:bg-[#f7f9ff] cursor-pointer">
-                    <span>قوانین و ضمانت‌نامه امانی</span>
+                    <span>قوانین و شرایط پرداخت</span>
                     <ChevronLeft className="w-4 h-4 text-[#707975] rtl:rotate-0 ltr:rotate-180" />
                   </div>
                 </div>

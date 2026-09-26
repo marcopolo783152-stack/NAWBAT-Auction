@@ -40,7 +40,7 @@ export const SubmitLotModal: React.FC<SubmitLotModalProps> = ({
   const [description, setDescription] = useState('');
   const [sellerName, setSellerName] = useState('احمدشاه رضایی');
   const [tazkiraId, setTazkiraId] = useState('1402-9982-10492');
-  const [hesabPayWallet, setHesabPayWallet] = useState('0799-882-114');
+  const [hesabPayWallet, setHesabPayWallet] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -87,9 +87,9 @@ export const SubmitLotModal: React.FC<SubmitLotModalProps> = ({
         imageUrl: categoryImages[category] || categoryImages.cars,
         endTime: Date.now() + 48 * 60 * 60 * 1000, // 48 hours auction
         isClosingSoon: false,
-        inspectorName: 'هیئت ارزیابی رسمی نوبت',
+        inspectorName: 'در انتظار بررسی',
         inspectionGrade: 'A',
-        escrowStatus: 'HesabPay Guaranteed',
+        escrowStatus: 'Payment integration pending',
         description: description || 'کالای بازرسی شده با اسناد قانونی و امانت‌داری کامل در پلتفرم نوبت افغانستان.',
         descriptionEn: description || 'Certified inspected asset on NAWBAT Afghanistan.',
         specs: {
@@ -100,7 +100,7 @@ export const SubmitLotModal: React.FC<SubmitLotModalProps> = ({
         bidHistory: [],
         sellerName,
         sellerKycTier: 2,
-        sellerVerified: true,
+        sellerVerified: false,
       };
 
       onLotCreated(newLot);
@@ -141,7 +141,7 @@ export const SubmitLotModal: React.FC<SubmitLotModalProps> = ({
             </div>
             <h4 className="font-serif text-lg font-bold text-[#003a2f]">مزایده شما با موفقیت ثبت شد!</h4>
             <p className="text-xs text-[#3f4945]">
-              لوط شما اکنون در کاتالوگ فعال قرار گرفت و خریداران می‌توانند پیشنهادهای خود را با سپرده HesabPay ارسال کنند.
+              لوط شما برای بررسی ثبت شد. پس از تایید مدیریت می‌تواند وارد کاتالوگ عمومی گردد.
             </p>
           </div>
         ) : (
@@ -150,7 +150,7 @@ export const SubmitLotModal: React.FC<SubmitLotModalProps> = ({
             <div className="p-3 bg-[#ecf4ff] rounded-xl border border-[#326286]/20 flex items-center gap-2 text-xs text-[#001e31]">
               <ShieldCheck className="w-4 h-4 text-[#003a2f] shrink-0" />
               <span>
-                عرضه اموال مطابق قانون تجارت الکترونیک افغانستان، منوط به احراز هویت تذکره الکترونیکی و تسویه از طریق HesabPay می‌باشد.
+                انتشار عمومی هر لوط منوط به بررسی حساب، اطلاعات کالا و قوانین نهایی پلتفرم است. اتصال HesabPay پس از تایید تجارتی فعال می‌شود.
               </span>
             </div>
 
@@ -266,7 +266,7 @@ export const SubmitLotModal: React.FC<SubmitLotModalProps> = ({
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="font-semibold text-[#111d27]">شماره حساب HesabPay تسویه وجه:</label>
+                <label className="font-semibold text-[#111d27]">شماره حساب HesabPay (اختیاری تا زمان اتصال رسمی):</label>
                 <input
                   type="text"
                   value={hesabPayWallet}

@@ -115,10 +115,10 @@ export const SecurityPillars: React.FC<SecurityPillarsProps> = ({ currentLang })
             </div>
             <div className="flex flex-col text-right rtl:text-right ltr:text-left">
               <h4 className="font-serif text-sm sm:text-base font-bold text-[#111d27]">
-                تسویه حساب کاملاً بانکی و قانونی
+                پرداخت و تسویه قابل پیگیری
               </h4>
               <p className="text-xs text-[#3f4945]">
-                تحت ضوابط معاملات الکترونیک افغانستان و پشتیبانی شبکه‌ای HesabPay با نظارت بانکی
+                اتصال ارائه‌دهندگان پرداخت فقط پس از تایید فنی، تجارتی و قراردادی فعال می‌شود.
               </p>
             </div>
           </div>
@@ -126,15 +126,15 @@ export const SecurityPillars: React.FC<SecurityPillarsProps> = ({ currentLang })
           <div className="flex items-center gap-2 flex-wrap justify-center">
             <span className="px-3 py-1.5 bg-[#ecf4ff] rounded text-xs font-semibold text-[#111d27] flex items-center gap-1.5 border border-[#326286]/20">
               <CheckCircle className="w-3.5 h-3.5 text-[#003a2f]" />
-              HesabPay Direct Wallet
+              HesabPay — integration pending
             </span>
             <span className="px-3 py-1.5 bg-[#ecf4ff] rounded text-xs font-semibold text-[#111d27] flex items-center gap-1.5 border border-[#326286]/20">
               <CheckCircle className="w-3.5 h-3.5 text-[#003a2f]" />
-              کارت‌های بانکی عضو APS
+              روش‌های پرداخت — پس از تایید
             </span>
             <span className="px-3 py-1.5 bg-[#ecf4ff] rounded text-xs font-semibold text-[#111d27] flex items-center gap-1.5 border border-[#326286]/20">
               <CheckCircle className="w-3.5 h-3.5 text-[#003a2f]" />
-              صرافی‌های مجاز سرای شهزاده
+              گزینه‌های تسویه — پس از تایید
             </span>
           </div>
         </div>

@@ -1,17 +1,42 @@
 import express, { Request, Response } from 'express';
+import helmet from 'helmet';
+import { rateLimit } from 'express-rate-limit';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { db, UserRecord, AuctionRecord } from './src/server/database';
+import { issueAdminToken, requireAdmin, verifyAdminCredentials } from './src/server/auth';
+import { createPersistentUser, getPersistentUser, hasPersistentDatabase, listPersistentUsers, updatePersistentUser } from './src/server/userRepository';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function startServer() {
+export async function createApp(serveFrontend = true) {
   const app = express();
-  const PORT = 3000;
+  app.disable('x-powered-by');
+  app.set('trust proxy', 1);
 
-  app.use(express.json());
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: false,
+  }));
+  app.use(express.json({ limit: '1mb' }));
+
+  const apiLimiter = rateLimit({
+    windowMs: 60_000,
+    limit: 180,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+  });
+  const adminLoginLimiter = rateLimit({
+    windowMs: 15 * 60_000,
+    limit: 10,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: { success: false, error: 'Too many login attempts. Please try again later.' },
+  });
+
+  app.use('/api', apiLimiter);
 
   // -------------------------------------------------------------
   // Public & Health APIs
@@ -19,9 +44,9 @@ async function startServer() {
   app.get('/api/health', (req: Request, res: Response) => {
     res.json({
       status: 'ok',
-      platform: 'NAWBAT & Mazayeda National Auction Enterprise System',
-      escrowPartner: 'HesabPay Settlement Network',
-      authMethod: 'e-Tazkira Biometric KYC Engine',
+      platform: 'NAWBAT Afghanistan Auction Marketplace',
+      payments: process.env.HESABPAY_API_KEY ? 'HesabPay configured' : 'HesabPay not configured',
+      kyc: 'Manual review workflow',
       environment: process.env.NODE_ENV || 'development',
       timestamp: new Date().toISOString(),
     });
@@ -30,74 +55,64 @@ async function startServer() {
   // -------------------------------------------------------------
   // Authentication API
   // -------------------------------------------------------------
-  app.post('/api/admin/login', (req: Request, res: Response) => {
-    const { email, password } = req.body;
-    if (email === 'admin@nawbat.af' && password === 'admin123') {
-      const superAdmin = db.users.find(u => u.id === 'usr-admin-1') || {
-        id: 'usr-admin-1',
-        fullName: 'انجنیر احسان حق‌پال',
-        email: 'admin@nawbat.af',
-        roleTitle: 'Super Admin',
-      };
-      db.addAuditLog('انجنیر احسان حق‌پال (Super Admin)', 'ADMIN_LOGIN', 'user_management', 'usr-admin-1', 'Super Admin logged into enterprise management console');
+  app.post('/api/admin/login', adminLoginLimiter, async (req: Request, res: Response) => {
+    const { email, password } = req.body || {};
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ success: false, error: 'Email and password are required.' });
+    }
 
-      return res.json({
-        success: true,
-        token: 'nawbat-enterprise-token-' + Date.now(),
-        user: superAdmin,
+    const verified = await verifyAdminCredentials(email, password);
+    if (!verified.ok) {
+      const status = verified.reason === 'ADMIN_NOT_CONFIGURED' ? 503 : 401;
+      return res.status(status).json({
+        success: false,
+        error: verified.reason === 'ADMIN_NOT_CONFIGURED'
+          ? 'Admin access is not configured on the server.'
+          : 'Invalid email or password.',
       });
     }
-    return res.status(401).json({
-      success: false,
-      error: 'Invalid credentials. Default: admin@nawbat.af / admin123',
-    });
-  });
 
-  // -------------------------------------------------------------
-  // User Profile & Notification Preferences API
-  // -------------------------------------------------------------
-  app.get('/api/user/profile', (req: Request, res: Response) => {
-    const user = db.users.find(u => u.id === 'usr-buyer-84') || db.users[3];
-    res.json({
-      id: user.id,
-      fullName: user.fullName,
-      fullNameEn: user.fullNameEn,
-      email: user.email,
-      phone: user.phone,
-      tazkiraNumber: user.tazkiraNumber,
-      kycStatus: user.kycStatus,
-      balanceAFN: user.balanceAFN,
-      escrowLockedAFN: user.escrowLockedAFN,
-      notificationPreferences: user.notificationPreferences || {
-        emailOutbid: true,
-        emailClosingSoon: true,
-        emailHesabPayReceipts: true,
-      },
-    });
-  });
-
-  app.put('/api/user/notification-preferences', (req: Request, res: Response) => {
-    const user = db.users.find(u => u.id === 'usr-buyer-84') || db.users[3];
-    const { emailOutbid, emailClosingSoon, emailHesabPayReceipts } = req.body;
-
-    user.notificationPreferences = {
-      emailOutbid: Boolean(emailOutbid),
-      emailClosingSoon: Boolean(emailClosingSoon),
-      emailHesabPayReceipts: emailHesabPayReceipts !== undefined ? Boolean(emailHesabPayReceipts) : true,
+    const superAdmin = db.users.find(u => u.id === 'usr-admin-1') || {
+      id: 'usr-admin-1',
+      fullName: 'NAWBAT Administrator',
+      email: verified.email,
+      roleTitle: 'Super Admin',
     };
 
     db.addAuditLog(
-      user.fullName,
-      'UPDATE_NOTIFICATION_PREFERENCES',
+      superAdmin.fullName,
+      'ADMIN_LOGIN',
       'user_management',
-      user.id,
-      `User updated email notification toggles: Outbid=${user.notificationPreferences.emailOutbid}, ClosingAlerts=${user.notificationPreferences.emailClosingSoon}`
+      superAdmin.id,
+      'Authenticated admin session created',
     );
 
-    res.json({
+    return res.json({
       success: true,
-      notificationPreferences: user.notificationPreferences,
-      message: 'تنظیمات اعلانات ایمیل با موفقیت ذخیره شد.',
+      token: issueAdminToken(verified.email),
+      user: superAdmin,
+    });
+  });
+
+  // Every admin route below this line requires a valid signed bearer token.
+  app.use('/api/admin', requireAdmin);
+
+  // -------------------------------------------------------------
+  // User account APIs
+  // -------------------------------------------------------------
+  // Public buyer/seller authentication is intentionally disabled until
+  // a signed user-session flow is connected to persistent users.
+  app.get('/api/user/profile', (_req: Request, res: Response) => {
+    return res.status(501).json({
+      error: 'User authentication is not enabled yet.',
+      code: 'USER_AUTH_PENDING',
+    });
+  });
+
+  app.put('/api/user/notification-preferences', (_req: Request, res: Response) => {
+    return res.status(501).json({
+      error: 'User authentication is not enabled yet.',
+      code: 'USER_AUTH_PENDING',
     });
   });
 
@@ -150,9 +165,9 @@ async function startServer() {
         escrowHeldTotalAFN,
       },
       systemStatus: {
-        hesabPayGateway: 'Operational (Live Webhooks Active)',
-        antiSnipingEngine: 'Active (3m extension rule)',
-        kycVerifierService: 'Online',
+        hesabPayGateway: process.env.HESABPAY_API_KEY ? 'Configured' : 'Not configured',
+        antiSnipingEngine: `Active (${db.settings.antiSnipingMinutes}m extension rule)`,
+        kycVerifierService: 'Manual review workflow',
         maintenanceMode: db.settings.maintenanceMode,
       }
     });
@@ -161,13 +176,28 @@ async function startServer() {
   // -------------------------------------------------------------
   // 2. User Management APIs
   // -------------------------------------------------------------
-  app.get('/api/admin/users', (req: Request, res: Response) => {
+  app.get('/api/admin/users', async (req: Request, res: Response) => {
     const { search, userType, status, kycStatus } = req.query;
-    let list = [...db.users];
 
+    if (hasPersistentDatabase()) {
+      try {
+        const users = await listPersistentUsers({
+          search: typeof search === 'string' ? search : undefined,
+          userType: typeof userType === 'string' ? userType : undefined,
+          status: typeof status === 'string' ? status : undefined,
+          kycStatus: typeof kycStatus === 'string' ? kycStatus : undefined,
+        });
+        return res.json(users);
+      } catch (error) {
+        console.error('Persistent user list failed:', error);
+        return res.status(500).json({ error: 'Could not load users from the database.' });
+      }
+    }
+
+    let list = [...db.users];
     if (search && typeof search === 'string') {
       const q = search.toLowerCase();
-      list = list.filter(u => 
+      list = list.filter(u =>
         u.fullName.toLowerCase().includes(q) ||
         u.fullNameEn.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q) ||
@@ -175,97 +205,116 @@ async function startServer() {
         u.tazkiraNumber.toLowerCase().includes(q)
       );
     }
-
-    if (userType && typeof userType === 'string' && userType !== 'all') {
-      list = list.filter(u => u.userType === userType);
-    }
-
-    if (status && typeof status === 'string' && status !== 'all') {
-      list = list.filter(u => u.status === status);
-    }
-
-    if (kycStatus && typeof kycStatus === 'string' && kycStatus !== 'all') {
-      list = list.filter(u => u.kycStatus === kycStatus);
-    }
-
-    res.json(list);
+    if (userType && typeof userType === 'string' && userType !== 'all') list = list.filter(u => u.userType === userType);
+    if (status && typeof status === 'string' && status !== 'all') list = list.filter(u => u.status === status);
+    if (kycStatus && typeof kycStatus === 'string' && kycStatus !== 'all') list = list.filter(u => u.kycStatus === kycStatus);
+    return res.json(list);
   });
 
-  app.get('/api/admin/users/:id', (req: Request, res: Response) => {
+  app.get('/api/admin/users/:id', async (req: Request, res: Response) => {
+    if (hasPersistentDatabase()) {
+      try {
+        const user = await getPersistentUser(req.params.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        return res.json({ user, kyc: null, invoices: [], disputes: [], lots: [] });
+      } catch (error) {
+        console.error('Persistent user lookup failed:', error);
+        return res.status(500).json({ error: 'Could not load user from the database.' });
+      }
+    }
+
     const user = db.users.find(u => u.id === req.params.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
-
-    // Relational lookups:
     const kyc = db.kycCases.find(k => k.userId === user.id);
     const invoices = db.invoices.filter(i => i.buyerId === user.id || i.sellerId === user.id);
     const disputes = db.disputes.filter(d => d.buyerName === user.fullName || d.sellerName === user.fullName);
     const lots = db.auctions.filter(a => a.sellerId === user.id);
-
-    res.json({
-      user,
-      kyc,
-      invoices,
-      disputes,
-      lots,
-    });
+    return res.json({ user, kyc, invoices, disputes, lots });
   });
 
-  app.post('/api/admin/users', (req: Request, res: Response) => {
-    const { fullName, fullNameEn, email, phone, userType, roleId, roleTitle, tazkiraNumber } = req.body;
+  app.post('/api/admin/users', async (req: Request, res: Response) => {
+    const { fullName, fullNameEn, email, phone, userType, roleId, tazkiraNumber } = req.body || {};
+    if (!fullName || !userType || (!email && !phone)) {
+      return res.status(400).json({ error: 'fullName, userType, and an email or phone number are required.' });
+    }
+
+    if (hasPersistentDatabase()) {
+      try {
+        const user = await createPersistentUser({
+          fullName,
+          fullNameEn,
+          email,
+          phone,
+          userType,
+          tazkiraNumber,
+          roleKey: typeof roleId === 'string' ? roleId.replace(/^role-/, '') : undefined,
+        });
+        db.addAuditLog('NAWBAT Administrator', 'CREATE_USER', 'user_management', user?.id || 'database-user', `Created ${userType} account for ${fullName}`);
+        return res.status(201).json({ success: true, user });
+      } catch (error: any) {
+        console.error('Persistent user creation failed:', error);
+        const duplicate = error?.code === '23505';
+        return res.status(duplicate ? 409 : 500).json({ error: duplicate ? 'Email or phone is already registered.' : 'Could not create user.' });
+      }
+    }
+
     const newUser: UserRecord = {
       id: `usr-${Date.now()}`,
-      username: email.split('@')[0],
+      username: email ? email.split('@')[0] : phone,
       fullName,
       fullNameEn: fullNameEn || fullName,
-      email,
-      phone,
-      roleId: roleId || (userType === 'staff' ? 'role-support' : 'role-buyer'),
-      roleTitle: roleTitle || (userType === 'staff' ? 'Staff' : 'Customer'),
+      email: email || '',
+      phone: phone || '',
+      roleId: roleId || (userType === 'staff' ? 'role-support' : `role-${userType}`),
+      roleTitle: userType === 'staff' ? 'Staff' : userType === 'buyer' ? 'Buyer' : 'Seller',
       userType,
       status: 'active',
       isBiddingBlocked: false,
       isSellingBlocked: false,
       kycStatus: 'pending',
-      tazkiraNumber: tazkiraNumber || `Tzk-${Math.floor(1000 + Math.random() * 9000)}`,
+      tazkiraNumber: tazkiraNumber || '',
       balanceAFN: 0,
       escrowLockedAFN: 0,
       createdAt: new Date().toISOString(),
       lastLoginAt: new Date().toISOString(),
-      ipAddress: '103.111.45.12',
-      deviceFingerprint: `DEV-NEW-${Date.now().toString().slice(-4)}`,
-      internalNotes: [{ id: `n-${Date.now()}`, author: 'Super Admin', note: 'Created via Admin Portal', timestamp: new Date().toISOString().slice(0, 10) }],
+      ipAddress: '',
+      deviceFingerprint: '',
+      internalNotes: [{ id: `n-${Date.now()}`, author: 'Super Admin', note: 'Created via Admin Portal', timestamp: new Date().toISOString() }],
       permissions: userType === 'staff' ? ['support.reply', 'tickets.manage'] : ['bidding.place'],
     };
-
     db.users.unshift(newUser);
-    db.addAuditLog('انجنیر احسان حق‌پال', 'CREATE_USER', 'user_management', newUser.id, `Created ${userType} account for ${fullName}`);
-    res.json({ success: true, user: newUser });
+    db.addAuditLog('NAWBAT Administrator', 'CREATE_USER', 'user_management', newUser.id, `Created ${userType} account for ${fullName}`);
+    return res.status(201).json({ success: true, user: newUser });
   });
 
-  app.put('/api/admin/users/:id', (req: Request, res: Response) => {
+  app.put('/api/admin/users/:id', async (req: Request, res: Response) => {
+    const { status, isBiddingBlocked, isSellingBlocked, kycStatus, newNote, roleId, roleTitle } = req.body || {};
+
+    if (hasPersistentDatabase()) {
+      try {
+        const user = await updatePersistentUser(req.params.id, { status, isBiddingBlocked, isSellingBlocked, kycStatus, newNote });
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        db.addAuditLog('NAWBAT Administrator', 'UPDATE_USER', 'user_management', user.id, 'Updated persistent user account');
+        return res.json({ success: true, user });
+      } catch (error) {
+        console.error('Persistent user update failed:', error);
+        return res.status(500).json({ error: 'Could not update user.' });
+      }
+    }
+
     const user = db.users.find(u => u.id === req.params.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const { status, isBiddingBlocked, isSellingBlocked, kycStatus, newNote, roleId, roleTitle } = req.body;
-
     if (status !== undefined) user.status = status;
     if (isBiddingBlocked !== undefined) user.isBiddingBlocked = isBiddingBlocked;
     if (isSellingBlocked !== undefined) user.isSellingBlocked = isSellingBlocked;
     if (kycStatus !== undefined) user.kycStatus = kycStatus;
     if (roleId) user.roleId = roleId;
     if (roleTitle) user.roleTitle = roleTitle;
-
     if (newNote && typeof newNote === 'string') {
-      user.internalNotes.unshift({
-        id: `note-${Date.now()}`,
-        author: 'انجنیر احسان حق‌پال',
-        note: newNote,
-        timestamp: new Date().toISOString().slice(0, 10),
-      });
+      user.internalNotes.unshift({ id: `note-${Date.now()}`, author: 'NAWBAT Administrator', note: newNote, timestamp: new Date().toISOString() });
     }
-
-    db.addAuditLog('انجنیر احسان حق‌پال', 'UPDATE_USER', 'user_management', user.id, `Updated status to ${user.status}, biddingBlocked=${user.isBiddingBlocked}, sellingBlocked=${user.isSellingBlocked}`);
-    res.json({ success: true, user });
+    db.addAuditLog('NAWBAT Administrator', 'UPDATE_USER', 'user_management', user.id, `Updated status to ${user.status}`);
+    return res.json({ success: true, user });
   });
 
   // -------------------------------------------------------------
@@ -425,9 +474,9 @@ async function startServer() {
       totalSellerCommissionsAFN: totalSellerCommissions,
       netPlatformRevenueAFN: totalBuyerPremiums + totalSellerCommissions,
       gateway: {
-        provider: 'HesabPay QR & Instant Escrow API',
-        merchantId: db.settings.hesabPayMerchantId,
-        status: 'Connected',
+        provider: 'HesabPay',
+        merchantId: process.env.HESABPAY_MERCHANT_ID || '',
+        status: process.env.HESABPAY_API_KEY ? (process.env.HESABPAY_SANDBOX === 'false' ? 'Configured - production' : 'Configured - sandbox') : 'Not configured',
         currency: 'AFN',
       }
     });
@@ -442,6 +491,9 @@ async function startServer() {
   });
 
   app.post('/api/admin/finance/payout', (req: Request, res: Response) => {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(501).json({ error: 'Production HesabPay payout execution is disabled until the signed merchant payout API is integrated.' });
+    }
     const { invoiceId, staffName } = req.body;
     const inv = db.invoices.find(i => i.id === invoiceId);
     if (!inv) return res.status(404).json({ error: 'Invoice not found' });
@@ -471,6 +523,9 @@ async function startServer() {
   });
 
   app.post('/api/admin/finance/refund', (req: Request, res: Response) => {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(501).json({ error: 'Production HesabPay refund execution is disabled until the signed merchant refund API is integrated.' });
+    }
     const { invoiceId, reason, staffName } = req.body;
     const inv = db.invoices.find(i => i.id === invoiceId);
     if (!inv) return res.status(404).json({ error: 'Invoice not found' });
@@ -593,24 +648,31 @@ async function startServer() {
   });
 
   // -------------------------------------------------------------
-  // Vite Development / Production Static Server
+  // Local frontend serving. Vercel serves the built Vite frontend separately.
   // -------------------------------------------------------------
-  if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.resolve(__dirname, 'dist')));
-    app.get('*', (req: Request, res: Response) => {
-      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
-    });
-  } else {
-    const vite = await createViteServer({
-      server: { middlewareMode: true, hmr: false },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
+  if (serveFrontend) {
+    if (process.env.NODE_ENV === 'production') {
+      app.use(express.static(path.resolve(__dirname, 'dist')));
+      app.get('*', (req: Request, res: Response) => {
+        res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+      });
+    } else {
+      const vite = await createViteServer({
+        server: { middlewareMode: true, hmr: false },
+        appType: 'spa',
+      });
+      app.use(vite.middlewares);
+    }
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Nawbat Enterprise Full-Stack API running on http://0.0.0.0:${PORT}`);
-  });
+  return app;
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  const PORT = Number(process.env.PORT || 3000);
+  createApp(true).then((app) => {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`NAWBAT full-stack server running on http://0.0.0.0:${PORT}`);
+    });
+  });
+}
