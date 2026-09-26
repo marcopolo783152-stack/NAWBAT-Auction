@@ -8,9 +8,8 @@ import { issueAdminToken, requireAdmin, verifyAdminCredentials } from './src/ser
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function startServer() {
+export async function createApp(serveFrontend = true) {
   const app = express();
-  const PORT = 3000;
 
   app.use(express.json());
 
@@ -619,24 +618,31 @@ async function startServer() {
   });
 
   // -------------------------------------------------------------
-  // Vite Development / Production Static Server
+  // Local frontend serving. Vercel serves the built Vite frontend separately.
   // -------------------------------------------------------------
-  if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.resolve(__dirname, 'dist')));
-    app.get('*', (req: Request, res: Response) => {
-      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
-    });
-  } else {
-    const vite = await createViteServer({
-      server: { middlewareMode: true, hmr: false },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
+  if (serveFrontend) {
+    if (process.env.NODE_ENV === 'production') {
+      app.use(express.static(path.resolve(__dirname, 'dist')));
+      app.get('*', (req: Request, res: Response) => {
+        res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+      });
+    } else {
+      const vite = await createViteServer({
+        server: { middlewareMode: true, hmr: false },
+        appType: 'spa',
+      });
+      app.use(vite.middlewares);
+    }
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Nawbat Enterprise Full-Stack API running on http://0.0.0.0:${PORT}`);
-  });
+  return app;
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  const PORT = Number(process.env.PORT || 3000);
+  createApp(true).then((app) => {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`NAWBAT full-stack server running on http://0.0.0.0:${PORT}`);
+    });
+  });
+}
