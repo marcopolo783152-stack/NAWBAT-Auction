@@ -2,6 +2,7 @@ import React from 'react';
 import { Search, ArrowLeft, ArrowRight, TrendingUp, SlidersHorizontal } from 'lucide-react';
 import { CategoryId, Language, Province } from '../types/auction';
 import { translations } from '../translations';
+import { Logo } from './Logo';
 
 interface HeroSectionProps {
   currentLang: Language;
@@ -49,15 +50,21 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   return (
     <section className="w-full bg-[linear-gradient(180deg,#ffffff_0%,#f7fbf9_58%,#f7f9ff_100%)] border-b border-[#003a2f]/5">
       {/* Full-width NAWBAT cover banner: exact uploaded artwork */}
-      <div className="w-full bg-white overflow-hidden border-b border-[#003a2f]/10">
+      <div className="relative w-full aspect-[3/1] bg-[linear-gradient(120deg,#f8f3e9_0%,#ffffff_50%,#edf3fa_100%)] overflow-hidden border-b border-[#003a2f]/10">
+        <div className="absolute inset-0 flex items-center justify-center px-6">
+          <Logo size="xl" showTagline={true} />
+        </div>
         <img
           src="/nawbat-banner.webp"
           alt="NAWBAT — Your Turn to Win"
-          className="block w-full h-auto object-cover"
-          width={2048}
-          height={682}
+          className="relative z-10 block w-full h-full object-cover"
+          width={900}
+          height={300}
           loading="eager"
           fetchPriority="high"
+          onError={(event) => {
+            event.currentTarget.style.display = 'none';
+          }}
         />
       </div>
 
