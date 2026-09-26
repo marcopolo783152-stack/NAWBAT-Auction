@@ -1,4 +1,6 @@
 import express, { Request, Response } from 'express';
+import helmet from 'helmet';
+import { rateLimit } from 'express-rate-limit';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -11,8 +13,30 @@ const __dirname = path.dirname(__filename);
 
 export async function createApp(serveFrontend = true) {
   const app = express();
+  app.disable('x-powered-by');
+  app.set('trust proxy', 1);
 
-  app.use(express.json());
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: false,
+  }));
+  app.use(express.json({ limit: '1mb' }));
+
+  const apiLimiter = rateLimit({
+    windowMs: 60_000,
+    limit: 180,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+  });
+  const adminLoginLimiter = rateLimit({
+    windowMs: 15 * 60_000,
+    limit: 10,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: { success: false, error: 'Too many login attempts. Please try again later.' },
+  });
+
+  app.use('/api', apiLimiter);
 
   // -------------------------------------------------------------
   // Public & Health APIs
@@ -20,7 +44,7 @@ export async function createApp(serveFrontend = true) {
   app.get('/api/health', (req: Request, res: Response) => {
     res.json({
       status: 'ok',
-      platform: 'NAWBAT & Mazayeda National Auction Enterprise System',
+      platform: 'NAWBAT Afghanistan Auction Marketplace',
       payments: process.env.HESABPAY_API_KEY ? 'HesabPay configured' : 'HesabPay not configured',
       kyc: 'Manual review workflow',
       environment: process.env.NODE_ENV || 'development',
@@ -31,7 +55,7 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // Authentication API
   // -------------------------------------------------------------
-  app.post('/api/admin/login', async (req: Request, res: Response) => {
+  app.post('/api/admin/login', adminLoginLimiter, async (req: Request, res: Response) => {
     const { email, password } = req.body || {};
     if (typeof email !== 'string' || typeof password !== 'string') {
       return res.status(400).json({ success: false, error: 'Email and password are required.' });
@@ -74,50 +98,21 @@ export async function createApp(serveFrontend = true) {
   app.use('/api/admin', requireAdmin);
 
   // -------------------------------------------------------------
-  // User Profile & Notification Preferences API
+  // User account APIs
   // -------------------------------------------------------------
-  app.get('/api/user/profile', (req: Request, res: Response) => {
-    const user = db.users.find(u => u.id === 'usr-buyer-84') || db.users[3];
-    res.json({
-      id: user.id,
-      fullName: user.fullName,
-      fullNameEn: user.fullNameEn,
-      email: user.email,
-      phone: user.phone,
-      tazkiraNumber: user.tazkiraNumber,
-      kycStatus: user.kycStatus,
-      balanceAFN: user.balanceAFN,
-      escrowLockedAFN: user.escrowLockedAFN,
-      notificationPreferences: user.notificationPreferences || {
-        emailOutbid: true,
-        emailClosingSoon: true,
-        emailHesabPayReceipts: true,
-      },
+  // Public buyer/seller authentication is intentionally disabled until
+  // a signed user-session flow is connected to persistent users.
+  app.get('/api/user/profile', (_req: Request, res: Response) => {
+    return res.status(501).json({
+      error: 'User authentication is not enabled yet.',
+      code: 'USER_AUTH_PENDING',
     });
   });
 
-  app.put('/api/user/notification-preferences', (req: Request, res: Response) => {
-    const user = db.users.find(u => u.id === 'usr-buyer-84') || db.users[3];
-    const { emailOutbid, emailClosingSoon, emailHesabPayReceipts } = req.body;
-
-    user.notificationPreferences = {
-      emailOutbid: Boolean(emailOutbid),
-      emailClosingSoon: Boolean(emailClosingSoon),
-      emailHesabPayReceipts: emailHesabPayReceipts !== undefined ? Boolean(emailHesabPayReceipts) : true,
-    };
-
-    db.addAuditLog(
-      user.fullName,
-      'UPDATE_NOTIFICATION_PREFERENCES',
-      'user_management',
-      user.id,
-      `User updated email notification toggles: Outbid=${user.notificationPreferences.emailOutbid}, ClosingAlerts=${user.notificationPreferences.emailClosingSoon}`
-    );
-
-    res.json({
-      success: true,
-      notificationPreferences: user.notificationPreferences,
-      message: 'تنظیمات اعلانات ایمیل با موفقیت ذخیره شد.',
+  app.put('/api/user/notification-preferences', (_req: Request, res: Response) => {
+    return res.status(501).json({
+      error: 'User authentication is not enabled yet.',
+      code: 'USER_AUTH_PENDING',
     });
   });
 
