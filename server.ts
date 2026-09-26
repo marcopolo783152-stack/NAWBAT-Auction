@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { db, UserRecord, AuctionRecord } from './src/server/database';
 import { issueAdminToken, requireAdmin, verifyAdminCredentials } from './src/server/auth';
+import { createPersistentUser, getPersistentUser, hasPersistentDatabase, listPersistentUsers, updatePersistentUser } from './src/server/userRepository';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -180,13 +181,28 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 2. User Management APIs
   // -------------------------------------------------------------
-  app.get('/api/admin/users', (req: Request, res: Response) => {
+  app.get('/api/admin/users', async (req: Request, res: Response) => {
     const { search, userType, status, kycStatus } = req.query;
-    let list = [...db.users];
 
+    if (hasPersistentDatabase()) {
+      try {
+        const users = await listPersistentUsers({
+          search: typeof search === 'string' ? search : undefined,
+          userType: typeof userType === 'string' ? userType : undefined,
+          status: typeof status === 'string' ? status : undefined,
+          kycStatus: typeof kycStatus === 'string' ? kycStatus : undefined,
+        });
+        return res.json(users);
+      } catch (error) {
+        console.error('Persistent user list failed:', error);
+        return res.status(500).json({ error: 'Could not load users from the database.' });
+      }
+    }
+
+    let list = [...db.users];
     if (search && typeof search === 'string') {
       const q = search.toLowerCase();
-      list = list.filter(u => 
+      list = list.filter(u =>
         u.fullName.toLowerCase().includes(q) ||
         u.fullNameEn.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q) ||
@@ -194,97 +210,116 @@ export async function createApp(serveFrontend = true) {
         u.tazkiraNumber.toLowerCase().includes(q)
       );
     }
-
-    if (userType && typeof userType === 'string' && userType !== 'all') {
-      list = list.filter(u => u.userType === userType);
-    }
-
-    if (status && typeof status === 'string' && status !== 'all') {
-      list = list.filter(u => u.status === status);
-    }
-
-    if (kycStatus && typeof kycStatus === 'string' && kycStatus !== 'all') {
-      list = list.filter(u => u.kycStatus === kycStatus);
-    }
-
-    res.json(list);
+    if (userType && typeof userType === 'string' && userType !== 'all') list = list.filter(u => u.userType === userType);
+    if (status && typeof status === 'string' && status !== 'all') list = list.filter(u => u.status === status);
+    if (kycStatus && typeof kycStatus === 'string' && kycStatus !== 'all') list = list.filter(u => u.kycStatus === kycStatus);
+    return res.json(list);
   });
 
-  app.get('/api/admin/users/:id', (req: Request, res: Response) => {
+  app.get('/api/admin/users/:id', async (req: Request, res: Response) => {
+    if (hasPersistentDatabase()) {
+      try {
+        const user = await getPersistentUser(req.params.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        return res.json({ user, kyc: null, invoices: [], disputes: [], lots: [] });
+      } catch (error) {
+        console.error('Persistent user lookup failed:', error);
+        return res.status(500).json({ error: 'Could not load user from the database.' });
+      }
+    }
+
     const user = db.users.find(u => u.id === req.params.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
-
-    // Relational lookups:
     const kyc = db.kycCases.find(k => k.userId === user.id);
     const invoices = db.invoices.filter(i => i.buyerId === user.id || i.sellerId === user.id);
     const disputes = db.disputes.filter(d => d.buyerName === user.fullName || d.sellerName === user.fullName);
     const lots = db.auctions.filter(a => a.sellerId === user.id);
-
-    res.json({
-      user,
-      kyc,
-      invoices,
-      disputes,
-      lots,
-    });
+    return res.json({ user, kyc, invoices, disputes, lots });
   });
 
-  app.post('/api/admin/users', (req: Request, res: Response) => {
-    const { fullName, fullNameEn, email, phone, userType, roleId, roleTitle, tazkiraNumber } = req.body;
+  app.post('/api/admin/users', async (req: Request, res: Response) => {
+    const { fullName, fullNameEn, email, phone, userType, roleId, tazkiraNumber } = req.body || {};
+    if (!fullName || !userType || (!email && !phone)) {
+      return res.status(400).json({ error: 'fullName, userType, and an email or phone number are required.' });
+    }
+
+    if (hasPersistentDatabase()) {
+      try {
+        const user = await createPersistentUser({
+          fullName,
+          fullNameEn,
+          email,
+          phone,
+          userType,
+          tazkiraNumber,
+          roleKey: typeof roleId === 'string' ? roleId.replace(/^role-/, '') : undefined,
+        });
+        db.addAuditLog('NAWBAT Administrator', 'CREATE_USER', 'user_management', user?.id || 'database-user', `Created ${userType} account for ${fullName}`);
+        return res.status(201).json({ success: true, user });
+      } catch (error: any) {
+        console.error('Persistent user creation failed:', error);
+        const duplicate = error?.code === '23505';
+        return res.status(duplicate ? 409 : 500).json({ error: duplicate ? 'Email or phone is already registered.' : 'Could not create user.' });
+      }
+    }
+
     const newUser: UserRecord = {
       id: `usr-${Date.now()}`,
-      username: email.split('@')[0],
+      username: email ? email.split('@')[0] : phone,
       fullName,
       fullNameEn: fullNameEn || fullName,
-      email,
-      phone,
-      roleId: roleId || (userType === 'staff' ? 'role-support' : 'role-buyer'),
-      roleTitle: roleTitle || (userType === 'staff' ? 'Staff' : 'Customer'),
+      email: email || '',
+      phone: phone || '',
+      roleId: roleId || (userType === 'staff' ? 'role-support' : `role-${userType}`),
+      roleTitle: userType === 'staff' ? 'Staff' : userType === 'buyer' ? 'Buyer' : 'Seller',
       userType,
       status: 'active',
       isBiddingBlocked: false,
       isSellingBlocked: false,
       kycStatus: 'pending',
-      tazkiraNumber: tazkiraNumber || `Tzk-${Math.floor(1000 + Math.random() * 9000)}`,
+      tazkiraNumber: tazkiraNumber || '',
       balanceAFN: 0,
       escrowLockedAFN: 0,
       createdAt: new Date().toISOString(),
       lastLoginAt: new Date().toISOString(),
-      ipAddress: '103.111.45.12',
-      deviceFingerprint: `DEV-NEW-${Date.now().toString().slice(-4)}`,
-      internalNotes: [{ id: `n-${Date.now()}`, author: 'Super Admin', note: 'Created via Admin Portal', timestamp: new Date().toISOString().slice(0, 10) }],
+      ipAddress: '',
+      deviceFingerprint: '',
+      internalNotes: [{ id: `n-${Date.now()}`, author: 'Super Admin', note: 'Created via Admin Portal', timestamp: new Date().toISOString() }],
       permissions: userType === 'staff' ? ['support.reply', 'tickets.manage'] : ['bidding.place'],
     };
-
     db.users.unshift(newUser);
-    db.addAuditLog('انجنیر احسان حق‌پال', 'CREATE_USER', 'user_management', newUser.id, `Created ${userType} account for ${fullName}`);
-    res.json({ success: true, user: newUser });
+    db.addAuditLog('NAWBAT Administrator', 'CREATE_USER', 'user_management', newUser.id, `Created ${userType} account for ${fullName}`);
+    return res.status(201).json({ success: true, user: newUser });
   });
 
-  app.put('/api/admin/users/:id', (req: Request, res: Response) => {
+  app.put('/api/admin/users/:id', async (req: Request, res: Response) => {
+    const { status, isBiddingBlocked, isSellingBlocked, kycStatus, newNote, roleId, roleTitle } = req.body || {};
+
+    if (hasPersistentDatabase()) {
+      try {
+        const user = await updatePersistentUser(req.params.id, { status, isBiddingBlocked, isSellingBlocked, kycStatus, newNote });
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        db.addAuditLog('NAWBAT Administrator', 'UPDATE_USER', 'user_management', user.id, 'Updated persistent user account');
+        return res.json({ success: true, user });
+      } catch (error) {
+        console.error('Persistent user update failed:', error);
+        return res.status(500).json({ error: 'Could not update user.' });
+      }
+    }
+
     const user = db.users.find(u => u.id === req.params.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const { status, isBiddingBlocked, isSellingBlocked, kycStatus, newNote, roleId, roleTitle } = req.body;
-
     if (status !== undefined) user.status = status;
     if (isBiddingBlocked !== undefined) user.isBiddingBlocked = isBiddingBlocked;
     if (isSellingBlocked !== undefined) user.isSellingBlocked = isSellingBlocked;
     if (kycStatus !== undefined) user.kycStatus = kycStatus;
     if (roleId) user.roleId = roleId;
     if (roleTitle) user.roleTitle = roleTitle;
-
     if (newNote && typeof newNote === 'string') {
-      user.internalNotes.unshift({
-        id: `note-${Date.now()}`,
-        author: 'انجنیر احسان حق‌پال',
-        note: newNote,
-        timestamp: new Date().toISOString().slice(0, 10),
-      });
+      user.internalNotes.unshift({ id: `note-${Date.now()}`, author: 'NAWBAT Administrator', note: newNote, timestamp: new Date().toISOString() });
     }
-
-    db.addAuditLog('انجنیر احسان حق‌پال', 'UPDATE_USER', 'user_management', user.id, `Updated status to ${user.status}, biddingBlocked=${user.isBiddingBlocked}, sellingBlocked=${user.isSellingBlocked}`);
-    res.json({ success: true, user });
+    db.addAuditLog('NAWBAT Administrator', 'UPDATE_USER', 'user_management', user.id, `Updated status to ${user.status}`);
+    return res.json({ success: true, user });
   });
 
   // -------------------------------------------------------------
