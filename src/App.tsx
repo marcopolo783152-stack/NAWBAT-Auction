@@ -20,7 +20,7 @@ import { UserProfileModal } from './components/UserProfileModal';
 import { authApi, NawbatUser } from './services/authApi';
 import { LoginPage } from './components/LoginPage';
 import { FeesPoliciesPage } from './components/FeesPoliciesPage';
-import { ShieldCheck, CheckCircle2, Clock, X } from 'lucide-react';
+import { CheckCircle2, X } from 'lucide-react';
 
 export default function App() {
   const [currentLang, setCurrentLang] = useState<Language>('fa');
@@ -286,7 +286,11 @@ export default function App() {
           onToggleWatchlist={handleToggleWatchlist}
           onOpenSubmitLot={handleOpenSubmitLot}
           onSwitchToWeb={() => setViewMode('web')}
-          onOpenProfile={() => setIsUserProfileOpen(true)}
+          currentUser={currentUser}
+          onOpenProfile={() => {
+            if (currentUser) setIsUserProfileOpen(true);
+            else { setViewMode('web'); setActiveTab('login'); }
+          }}
         />
       ) : (
         /* Full Desktop / Responsive Web Platform */
@@ -377,7 +381,7 @@ export default function App() {
                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#003a2f]/10">
                   <div>
                     <h2 className="font-serif text-2xl font-bold text-[#003a2f]">مزایده‌های تحت پیشنهاد من</h2>
-                    <p className="text-xs text-[#3f4945]">لیست اقلامی که با سپرده امانی HesabPay پیشنهاد ثبت نموده‌اید.</p>
+                    <p className="text-xs text-[#3f4945]">لیست اقلامی که با حساب شما پیشنهاد ثبت شده است.</p>
                   </div>
                   <button
                     onClick={() => setActiveTab('home')}
