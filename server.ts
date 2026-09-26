@@ -3,6 +3,7 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { db, UserRecord, AuctionRecord } from './src/server/database';
+import { issueAdminToken, requireAdmin, verifyAdminCredentials } from './src/server/auth';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,8 +21,8 @@ async function startServer() {
     res.json({
       status: 'ok',
       platform: 'NAWBAT & Mazayeda National Auction Enterprise System',
-      escrowPartner: 'HesabPay Settlement Network',
-      authMethod: 'e-Tazkira Biometric KYC Engine',
+      payments: process.env.HESABPAY_API_KEY ? 'HesabPay configured' : 'HesabPay not configured',
+      kyc: 'Manual review workflow',
       environment: process.env.NODE_ENV || 'development',
       timestamp: new Date().toISOString(),
     });
@@ -30,28 +31,47 @@ async function startServer() {
   // -------------------------------------------------------------
   // Authentication API
   // -------------------------------------------------------------
-  app.post('/api/admin/login', (req: Request, res: Response) => {
-    const { email, password } = req.body;
-    if (email === 'admin@nawbat.af' && password === 'admin123') {
-      const superAdmin = db.users.find(u => u.id === 'usr-admin-1') || {
-        id: 'usr-admin-1',
-        fullName: 'انجنیر احسان حق‌پال',
-        email: 'admin@nawbat.af',
-        roleTitle: 'Super Admin',
-      };
-      db.addAuditLog('انجنیر احسان حق‌پال (Super Admin)', 'ADMIN_LOGIN', 'user_management', 'usr-admin-1', 'Super Admin logged into enterprise management console');
+  app.post('/api/admin/login', async (req: Request, res: Response) => {
+    const { email, password } = req.body || {};
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ success: false, error: 'Email and password are required.' });
+    }
 
-      return res.json({
-        success: true,
-        token: 'nawbat-enterprise-token-' + Date.now(),
-        user: superAdmin,
+    const verified = await verifyAdminCredentials(email, password);
+    if (!verified.ok) {
+      const status = verified.reason === 'ADMIN_NOT_CONFIGURED' ? 503 : 401;
+      return res.status(status).json({
+        success: false,
+        error: verified.reason === 'ADMIN_NOT_CONFIGURED'
+          ? 'Admin access is not configured on the server.'
+          : 'Invalid email or password.',
       });
     }
-    return res.status(401).json({
-      success: false,
-      error: 'Invalid credentials. Default: admin@nawbat.af / admin123',
+
+    const superAdmin = db.users.find(u => u.id === 'usr-admin-1') || {
+      id: 'usr-admin-1',
+      fullName: 'NAWBAT Administrator',
+      email: verified.email,
+      roleTitle: 'Super Admin',
+    };
+
+    db.addAuditLog(
+      superAdmin.fullName,
+      'ADMIN_LOGIN',
+      'user_management',
+      superAdmin.id,
+      'Authenticated admin session created',
+    );
+
+    return res.json({
+      success: true,
+      token: issueAdminToken(verified.email),
+      user: superAdmin,
     });
   });
+
+  // Every admin route below this line requires a valid signed bearer token.
+  app.use('/api/admin', requireAdmin);
 
   // -------------------------------------------------------------
   // User Profile & Notification Preferences API
@@ -150,9 +170,9 @@ async function startServer() {
         escrowHeldTotalAFN,
       },
       systemStatus: {
-        hesabPayGateway: 'Operational (Live Webhooks Active)',
-        antiSnipingEngine: 'Active (3m extension rule)',
-        kycVerifierService: 'Online',
+        hesabPayGateway: process.env.HESABPAY_API_KEY ? 'Configured' : 'Not configured',
+        antiSnipingEngine: `Active (${db.settings.antiSnipingMinutes}m extension rule)`,
+        kycVerifierService: 'Manual review workflow',
         maintenanceMode: db.settings.maintenanceMode,
       }
     });
@@ -425,9 +445,9 @@ async function startServer() {
       totalSellerCommissionsAFN: totalSellerCommissions,
       netPlatformRevenueAFN: totalBuyerPremiums + totalSellerCommissions,
       gateway: {
-        provider: 'HesabPay QR & Instant Escrow API',
-        merchantId: db.settings.hesabPayMerchantId,
-        status: 'Connected',
+        provider: 'HesabPay',
+        merchantId: process.env.HESABPAY_MERCHANT_ID || '',
+        status: process.env.HESABPAY_API_KEY ? (process.env.HESABPAY_SANDBOX === 'false' ? 'Configured - production' : 'Configured - sandbox') : 'Not configured',
         currency: 'AFN',
       }
     });
@@ -442,6 +462,9 @@ async function startServer() {
   });
 
   app.post('/api/admin/finance/payout', (req: Request, res: Response) => {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(501).json({ error: 'Production HesabPay payout execution is disabled until the signed merchant payout API is integrated.' });
+    }
     const { invoiceId, staffName } = req.body;
     const inv = db.invoices.find(i => i.id === invoiceId);
     if (!inv) return res.status(404).json({ error: 'Invoice not found' });
@@ -471,6 +494,9 @@ async function startServer() {
   });
 
   app.post('/api/admin/finance/refund', (req: Request, res: Response) => {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(501).json({ error: 'Production HesabPay refund execution is disabled until the signed merchant refund API is integrated.' });
+    }
     const { invoiceId, reason, staffName } = req.body;
     const inv = db.invoices.find(i => i.id === invoiceId);
     if (!inv) return res.status(404).json({ error: 'Invoice not found' });
