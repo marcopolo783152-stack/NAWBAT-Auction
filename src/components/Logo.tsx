@@ -1,69 +1,67 @@
 import React from 'react';
 
 interface LogoProps {
-  variant?: 'nawbat' | 'mazayeda' | 'combined';
   className?: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
+  showTagline?: boolean;
+  light?: boolean;
 }
 
-export const Logo: React.FC<LogoProps> = ({ variant = 'combined', className = '', size = 'md' }) => {
-  // Hotlinked official Nawbat logo from prompt
-  const nawbatImgUrl = 'https://lh3.googleusercontent.com/aida-public/AB6AXuDYW7pYX71wjXvPlTgFbT-opX9UwEpjohbKiOd-AH_Sygbexb-eBRgNCAcAjGoZDCH4CI7L1DUp4d4oDlWL9KIqPdJDwnvEee5eVZuforOrSnadLkvqP1LzHUsMbzt6OFxulNpGFRDEVLRUxJdjR4Ru1Gxfot1Tr7uzTEXPQzp_vlg8eYDnfyYhU_gvkc5e6g6ss6Up8EWxGX5_uQ62PVKhgpm6W_5wc0phTU4HUXe-TIIXv41m1qKQ49CzKcfSYY5UzA';
-
-  const heights = {
-    sm: 'h-8',
-    md: 'h-10',
-    lg: 'h-14',
+export const Logo: React.FC<LogoProps> = ({
+  className = '',
+  size = 'md',
+  showTagline = true,
+  light = false,
+}) => {
+  const iconSizes = {
+    sm: 'w-9 h-9',
+    md: 'w-11 h-11',
+    lg: 'w-14 h-14',
+    xl: 'w-20 h-20 sm:w-24 sm:h-24',
   };
 
-  if (variant === 'mazayeda') {
-    return (
-      <div className={`flex items-center gap-2 ${className}`}>
-        {/* Mazayeda Gavel in Arch Icon */}
-        <div className="w-9 h-9 rounded-lg bg-[#003a2f] flex items-center justify-center p-1 shadow-sm">
-          <svg viewBox="0 0 100 100" className="w-full h-full" fill="none">
-            {/* Islamic Arch Outline */}
-            <path
-              d="M 20 90 L 20 45 C 20 25 50 10 50 10 C 50 10 80 25 80 45 L 80 90 Z"
-              stroke="#afefdc"
-              strokeWidth="5"
-              fill="none"
-            />
-            {/* Geometric Gold Gavel */}
-            <rect x="40" y="32" width="28" height="16" rx="2" transform="rotate(-30 40 32)" fill="#ecc22c" stroke="#ffe085" strokeWidth="2" />
-            <rect x="34" y="44" width="8" height="38" rx="2" transform="rotate(-30 34 44)" fill="#ecc22c" stroke="#ffe085" strokeWidth="2" />
-            <circle cx="50" cy="40" r="3" fill="#ffffff" />
-          </svg>
-        </div>
-        <div className="flex flex-col">
-          <span className="font-serif font-bold text-sm tracking-wide text-[#003a2f]">مزایده | MAZAYEDA</span>
-          <span className="text-[10px] text-[#326286] font-medium">پلتفرم حراج الکترونیک افغانستان</span>
-        </div>
-      </div>
-    );
-  }
+  const titleSizes = {
+    sm: 'text-base',
+    md: 'text-lg',
+    lg: 'text-xl sm:text-2xl',
+    xl: 'text-3xl sm:text-4xl lg:text-5xl',
+  };
+
+  const primary = light ? 'text-white' : 'text-[#003a2f]';
+  const secondary = light ? 'text-[#d8fff2]' : 'text-[#326286]';
+  const muted = light ? 'text-white/70' : 'text-[#5c6964]';
 
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
-      <img
-        src={nawbatImgUrl}
-        alt="NAWBAT Logo"
-        className={`${heights[size]} w-auto object-contain drop-shadow-sm`}
-        referrerPolicy="no-referrer"
-        onError={(e) => {
-          // Graceful fallback to styled brand mark if image fails
-          (e.currentTarget as HTMLElement).style.display = 'none';
-        }}
-      />
-      <div className="flex flex-col">
-        <div className="flex items-center gap-1.5">
-          <span className="font-serif text-lg font-bold text-[#003a2f] tracking-tight">نوبت افغانستان</span>
-          <span className="text-xs text-[#707975] font-light">|</span>
-          <span className="font-mono text-sm font-bold text-[#326286] tracking-wider">NAWBAT</span>
+    <div className={`inline-flex items-center gap-3 sm:gap-4 ${className}`}>
+      <div className={`${iconSizes[size]} shrink-0`}>
+        <svg viewBox="0 0 96 96" role="img" aria-label="NAWBAT" className="w-full h-full drop-shadow-sm">
+          <defs>
+            <linearGradient id="nawbatGold" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#f0c84a" />
+              <stop offset="100%" stopColor="#b98d00" />
+            </linearGradient>
+            <linearGradient id="nawbatGreen" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#0b5f50" />
+              <stop offset="100%" stopColor="#003a2f" />
+            </linearGradient>
+          </defs>
+          <path d="M18 84V42c0-18 14-31 30-31s30 13 30 31v42" fill="none" stroke="url(#nawbatGreen)" strokeWidth="8" strokeLinecap="round" />
+          <path d="M31 67V39l17 17 17-17v28" fill="none" stroke="url(#nawbatGold)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="48" cy="24" r="5" fill="#afefdc" stroke="#003a2f" strokeWidth="3" />
+          <path d="M25 83h46" stroke="#003a2f" strokeWidth="6" strokeLinecap="round" />
+        </svg>
+      </div>
+
+      <div className="flex flex-col min-w-0">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className={`font-serif font-black tracking-tight ${titleSizes[size]} ${primary}`}>نوبت</span>
+          <span className={`font-sans font-black tracking-[0.14em] ${size === 'xl' ? 'text-xl sm:text-2xl lg:text-3xl' : size === 'lg' ? 'text-base sm:text-lg' : 'text-sm'} ${secondary}`}>NAWBAT</span>
         </div>
-        <span className="hidden xl:inline text-[#3f4945] text-xs font-normal">
-          بزرگترین پلتفرم مزایده‌های معتبر و تضمین شده افغانستان
-        </span>
+        {showTagline && (
+          <span className={`${size === 'xl' ? 'text-sm sm:text-base mt-1' : 'text-[10px] sm:text-xs'} font-medium ${muted}`}>
+            بازار آنلاین مزایده افغانستان
+          </span>
+        )}
       </div>
     </div>
   );

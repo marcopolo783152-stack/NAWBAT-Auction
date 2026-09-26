@@ -1,5 +1,6 @@
 import React from 'react';
-import { Gavel, Search, ArrowLeft, ArrowRight, TrendingUp, SlidersHorizontal } from 'lucide-react';
+import { Search, ArrowLeft, ArrowRight, TrendingUp, SlidersHorizontal } from 'lucide-react';
+import { Logo } from './Logo';
 import { CategoryId, Language, Province } from '../types/auction';
 import { translations } from '../translations';
 
@@ -53,23 +54,21 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-[#a5d4fd]/30 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-6xl mx-auto flex flex-col items-center text-center relative z-10 rounded-[2rem] border border-[#003a2f]/8 bg-white/70 backdrop-blur-sm px-4 sm:px-8 lg:px-14 py-8 lg:py-12 shadow-[0_20px_60px_rgba(0,58,47,0.08)]">
-        {/* Eyebrow Institutional Badge */}
-        <div className="inline-flex items-center gap-2 bg-[#eef8f4] text-[#003a2f] px-4 py-2 rounded-full shadow-sm border border-[#003a2f]/10 mb-5">
-          <Gavel className="w-4 h-4 text-[#003a2f]" />
-          <span className="text-xs font-bold tracking-tight">{t.heroBadge}</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-[#0b5345]" />
-          <span className="text-xs text-[#326286] font-medium">{t.heroVerified}</span>
+        {/* NAWBAT Brand Banner */}
+        <div className="w-full mb-8">
+          <div className="relative overflow-hidden rounded-[2rem] bg-[linear-gradient(125deg,#003a2f_0%,#075547_55%,#0b6654_100%)] border border-white/10 shadow-[0_20px_60px_rgba(0,58,47,0.20)] px-5 sm:px-8 lg:px-12 py-8 sm:py-10">
+            <div className="absolute -top-16 -left-10 w-52 h-52 rounded-full bg-[#afefdc]/10 blur-2xl" />
+            <div className="absolute -bottom-24 -right-10 w-64 h-64 rounded-full bg-[#cea701]/10 blur-3xl" />
+            <div className="relative z-10 flex flex-col items-center justify-center">
+              <div className="rounded-2xl bg-white px-5 sm:px-8 py-4 sm:py-5 shadow-[0_12px_34px_rgba(0,0,0,0.16)] border border-white/80">
+                <Logo size="xl" showTagline={true} />
+              </div>
+              <p className="mt-5 text-sm sm:text-base text-white/90 max-w-3xl leading-7">
+                {t.heroSubtitle}
+              </p>
+            </div>
+          </div>
         </div>
-
-        {/* Main Headline */}
-        <h1 className="font-serif text-3xl sm:text-4xl lg:text-[3.35rem] font-bold text-[#10251f] tracking-[-0.025em] leading-[1.14] max-w-4xl mb-4">
-          {t.heroTitle}
-        </h1>
-
-        {/* Subtitle */}
-        <p className="text-sm sm:text-base text-[#3f4945] max-w-3xl leading-relaxed mb-8">
-          {t.heroSubtitle}
-        </p>
 
         {/* Search Command Box */}
         <div className="w-full max-w-4xl bg-white rounded-2xl shadow-[0_12px_34px_rgba(0,58,47,0.10)] border border-[#003a2f]/10 p-2.5 mb-7">
