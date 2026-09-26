@@ -1,6 +1,6 @@
 {
-  "name": "Mazayeda Afghan Trust System - NAWBAT",
-  "description": "First official digital auction and verified estate liquidation platform in Afghanistan, backed by HesabPay escrow and biometric e-Tazkira authentication.",
+  "name": "NAWBAT Afghanistan Auction Marketplace",
+  "description": "Multilingual online auction marketplace for Afghanistan. Payment and identity integrations are enabled only after verified production connections are completed.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }
