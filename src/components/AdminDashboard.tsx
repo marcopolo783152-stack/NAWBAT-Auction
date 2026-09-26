@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AuctionLot, CategoryId, Language, Province } from '../types/auction';
 import { adminApi } from '../services/adminApi';
+import { NawbatUser } from '../services/authApi';
 import { 
   ShieldCheck, 
   Plus, 
@@ -55,6 +56,7 @@ interface AdminDashboardProps {
   onExtendTime: (lotId: string) => void;
   onLogout: () => void;
   currentLang: Language;
+  currentUser: NawbatUser;
 }
 
 type AdminSection = 
@@ -80,12 +82,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onExtendTime,
   onLogout,
   currentLang,
+  currentUser,
 }) => {
   const isRtl = currentLang !== 'en';
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
 
-  // Selected staff role simulation
-  const [currentStaffRole, setCurrentStaffRole] = useState<'SuperAdmin' | 'Admin' | 'KycOfficer' | 'FinanceOfficer' | 'Auctioneer' | 'Logistics'>('SuperAdmin');
+  const currentStaffRole = currentUser.role;
 
   // Backend state
   const [overviewMetrics, setOverviewMetrics] = useState<any>(null);
@@ -100,7 +102,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [auditLogsList, setAuditLogsList] = useState<any[]>([]);
   const [platformSettings, setPlatformSettings] = useState<any>({
     buyerPremiumPct: 5.0,
-    sellerCommissionPct: 7.5,
+    sellerCommissionPct: 20.0,
     minDepositRequirementAFN: 50000,
     antiSnipingMinutes: 3,
     defaultAuctionDays: 7,
@@ -294,23 +296,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  // Nav Items definition
-  const sidebarItems: { id: AdminSection; labelFa: string; labelEn: string; icon: any; badge?: number }[] = [
+  // Navigation is derived from the authenticated staff role.
+  const allSidebarItems: { id: AdminSection; labelFa: string; labelEn: string; icon: any; badge?: number }[] = [
     { id: 'overview', labelFa: 'داشبورد کل و شاخص‌ها', labelEn: 'Dashboard Overview', icon: TrendingUp },
     { id: 'users', labelFa: 'مدیریت کاربران و مشتریان', labelEn: 'User Management', icon: Users, badge: usersList.filter(u => u.status === 'suspended').length },
     { id: 'staff', labelFa: 'کادر اداری و دسترسی‌ها', labelEn: 'Staff & Roles', icon: ShieldCheck },
     { id: 'auctions', labelFa: 'عملیات مزایده‌ها و تاییدات', labelEn: 'Auction Operations', icon: Gavel, badge: lots.filter(l => l.isClosingSoon).length },
     { id: 'sellers', labelFa: 'فروشندگان و تسویه‌ها', labelEn: 'Seller Management', icon: Building },
-    { id: 'buyers', labelFa: 'خریداران و سپرده‌ها', labelEn: 'Buyer Management', icon: UserCheck },
-    { id: 'kyc', labelFa: 'مرکز تایید هویت و تذکره', labelEn: 'KYC & Tazkira', icon: FileCheck, badge: kycList.filter(k => k.status === 'pending').length },
+    { id: 'buyers', labelFa: 'خریداران و حساب‌ها', labelEn: 'Buyer Management', icon: UserCheck },
+    { id: 'kyc', labelFa: 'مرکز تایید هویت و اسناد', labelEn: 'KYC & Identity', icon: FileCheck, badge: kycList.filter(k => k.status === 'pending').length },
     { id: 'finance', labelFa: 'امور مالی و حساب‌پی', labelEn: 'Finance & HesabPay', icon: CreditCard },
     { id: 'fraud', labelFa: 'ضد تقلب و ریسک', labelEn: 'Fraud & Security', icon: AlertOctagon, badge: fraudFlagsList.filter(f => f.status === 'investigating').length },
-    { id: 'disputes', labelFa: 'مرکز شکایات و حکمیت', labelEn: 'Disputes & Support', icon: Scale, badge: disputesList.filter(d => d.status === 'under_review').length },
+    { id: 'disputes', labelFa: 'مرکز شکایات و پشتیبانی', labelEn: 'Disputes & Support', icon: Scale, badge: disputesList.filter(d => d.status === 'under_review').length },
     { id: 'logistics', labelFa: 'تحویل‌دهی و اسکن QR', labelEn: 'Logistics & QR Release', icon: QrCode },
     { id: 'cms', labelFa: 'مدیریت محتوا و اعلانات', labelEn: 'Content & CMS', icon: Layers },
     { id: 'settings', labelFa: 'تنظیمات قوانین و کارمزد', labelEn: 'Platform Settings', icon: Settings },
     { id: 'audit', labelFa: 'گزارش حسابرسی امنیتی', labelEn: 'Audit Trail', icon: History },
   ];
+
+  const roleSections: Record<string, AdminSection[]> = {
+    superadmin: ['overview','users','staff','auctions','sellers','buyers','kyc','finance','fraud','disputes','logistics','cms','settings','audit'],
+    admin: ['overview','users','staff','auctions','sellers','buyers','kyc','finance','fraud','disputes','logistics','cms','settings','audit'],
+    auction_manager: ['overview','users','auctions','sellers','buyers'],
+    auctioneer: ['overview','auctions'],
+    cataloger: ['overview','auctions','cms'],
+    finance: ['overview','users','sellers','buyers','finance'],
+    kyc: ['overview','users','kyc'],
+    support: ['overview','users','disputes'],
+    logistics: ['overview','users','logistics'],
+    moderator: ['overview','users','auctions','fraud','disputes'],
+  };
+  const allowedSections = roleSections[currentStaffRole] || ['overview'];
+  const sidebarItems = allSidebarItems.filter((item) => allowedSections.includes(item.id));
 
   return (
     <div className={`w-full min-h-screen bg-[#f4f7f6] text-[#111d27] font-sans flex flex-col ${isRtl ? 'rtl' : 'ltr'}`}>
@@ -353,24 +370,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <span className="text-[#afefdc] font-mono font-semibold">Anti-Snip: Active (3m)</span>
           </div>
 
-          {/* Role Switcher for Testing Full RBAC */}
-          <div className="flex items-center gap-1.5 bg-[#0b5345] px-2.5 py-1 rounded-lg border border-[#afefdc]/20 text-xs">
+          <div className="flex items-center gap-2 bg-[#0b5345] px-3 py-1.5 rounded-lg border border-[#afefdc]/20 text-xs">
             <ShieldCheck className="w-3.5 h-3.5 text-[#afefdc]" />
-            <span className="text-white/70 text-[11px]">نقش اداری:</span>
-            <select
-              value={currentStaffRole}
-              onChange={(e) => {
-                setCurrentStaffRole(e.target.value as any);
-                showToast(`نقش اداری به ${e.target.value} تغییر یافت.`);
-              }}
-              className="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
-            >
-              <option value="SuperAdmin" className="text-[#111d27]">انجنیر احسان حق‌پال (Super Admin)</option>
-              <option value="KycOfficer" className="text-[#111d27]">فریحه سادات (KYC Officer)</option>
-              <option value="FinanceOfficer" className="text-[#111d27]">محمد بشیر پویا (Finance Officer)</option>
-              <option value="Auctioneer" className="text-[#111d27]">احمد نوید (Auctioneer)</option>
-              <option value="Logistics" className="text-[#111d27]">وحیدالله (Logistics Officer)</option>
-            </select>
+            <div className="leading-tight">
+              <div className="text-white font-bold">{currentUser.fullName}</div>
+              <div className="text-[#afefdc] text-[10px]">{currentUser.roleName || currentUser.role}</div>
+            </div>
           </div>
 
           <button
@@ -548,6 +553,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   >
                     <option value="all">همه انواع کاربران</option>
                     <option value="buyer">خریداران (Buyers)</option>
+                    <option value="customer">مشتریان (Customers)</option>
                     <option value="seller">فروشندگان (Sellers)</option>
                     <option value="business">شرکت‌ها و تاجران (Dealers)</option>
                     <option value="staff">کادر اداری (Staff)</option>
@@ -555,15 +561,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
 
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     const name = prompt('نام کامل کاربر جدید:');
                     const email = prompt('ایمیل:');
-                    if (name && email) {
-                      adminApi.createUser({ fullName: name, email, userType: 'buyer' }).then(() => {
-                        showToast('کاربر جدید ثبت گردید.');
-                        loadData();
-                      });
+                    const userType = prompt('نوع حساب: buyer / customer / seller / business / staff', 'buyer') || 'buyer';
+                    if (!name || !email) return;
+
+                    let roleId: string | undefined;
+                    let temporaryPassword: string | undefined;
+                    if (userType === 'staff') {
+                      roleId = prompt('نقش کارمند: admin / auction_manager / auctioneer / cataloger / finance / kyc / support / logistics / moderator', 'support') || 'support';
+                      temporaryPassword = prompt('رمز موقت کارمند (حداقل 10 کاراکتر):') || '';
+                      if (temporaryPassword.length < 10) {
+                        showToast('رمز موقت باید حداقل 10 کاراکتر باشد.');
+                        return;
+                      }
                     }
+
+                    const result = await adminApi.createUser({ fullName: name, email, userType, roleId, temporaryPassword });
+                    if (result?.error) {
+                      showToast(result.error);
+                      return;
+                    }
+                    showToast(userType === 'staff' ? 'حساب کارمند با نقش و رمز موقت ایجاد شد.' : 'کاربر جدید ثبت گردید.');
+                    loadData();
                   }}
                   className="bg-[#003a2f] hover:bg-[#0b5345] text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
                 >

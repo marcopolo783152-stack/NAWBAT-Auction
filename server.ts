@@ -1,12 +1,16 @@
 import express, { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { db, UserRecord, AuctionRecord } from './src/server/database';
-import { issueAdminToken, requireAdmin, verifyAdminCredentials } from './src/server/auth';
+import { issueAdminToken, issueSessionToken, requireAdmin, requireRoles, requireSession, verifyAdminCredentials } from './src/server/auth';
 import { createPersistentUser, getPersistentUser, hasPersistentDatabase, listPersistentUsers, updatePersistentUser } from './src/server/userRepository';
+import { findAuthUserByEmail, markLogin, registerPublicUser, safeAuthUser } from './src/server/authRepository';
+import { NAWBAT_FEES, quoteFees } from './src/server/fees';
+import { getPool } from './src/server/postgres';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -50,6 +54,155 @@ export async function createApp(serveFrontend = true) {
       environment: process.env.NODE_ENV || 'development',
       timestamp: new Date().toISOString(),
     });
+  });
+
+  // -------------------------------------------------------------
+  // Public fee schedule
+  // -------------------------------------------------------------
+  app.get('/api/fees', (req: Request, res: Response) => {
+    const sale = Number(req.query.salePriceAFN);
+    const reserve = req.query.reserveAFN !== undefined ? Number(req.query.reserveAFN) : undefined;
+    const negotiated = req.query.negotiatedSellerPct !== undefined ? Number(req.query.negotiatedSellerPct) : undefined;
+
+    if (Number.isFinite(sale) && sale >= 0) {
+      try {
+        return res.json({ fees: NAWBAT_FEES, quote: quoteFees(sale, { reserveAFN: reserve, negotiatedSellerPct: negotiated }) });
+      } catch (error: any) {
+        return res.status(400).json({ error: error?.message || 'Could not calculate fees.' });
+      }
+    }
+
+    return res.json({ fees: NAWBAT_FEES });
+  });
+
+  // -------------------------------------------------------------
+  // Unified account authentication
+  // -------------------------------------------------------------
+  app.post('/api/auth/register', adminLoginLimiter, async (req: Request, res: Response) => {
+    if (!hasPersistentDatabase()) {
+      return res.status(503).json({ error: 'Account database is not configured yet.' });
+    }
+
+    const { fullName, email, password, accountType, preferredLanguage, acceptTerms, acceptPrivacy } = req.body || {};
+    const allowedAccountTypes = new Set(['buyer', 'customer', 'seller', 'business']);
+
+    if (typeof fullName !== 'string' || fullName.trim().length < 2) {
+      return res.status(400).json({ error: 'Full name is required.' });
+    }
+    if (typeof email !== 'string' || !/^\S+@\S+\.\S+$/.test(email.trim())) {
+      return res.status(400).json({ error: 'A valid email address is required.' });
+    }
+    if (typeof password !== 'string' || password.length < 10) {
+      return res.status(400).json({ error: 'Password must be at least 10 characters.' });
+    }
+    if (!allowedAccountTypes.has(accountType)) {
+      return res.status(400).json({ error: 'Choose buyer, customer, seller, or business.' });
+    }
+    if (acceptTerms !== true || acceptPrivacy !== true) {
+      return res.status(400).json({ error: 'Terms of Use and Privacy Policy must be accepted.' });
+    }
+
+    try {
+      const user = await registerPublicUser({
+        fullName,
+        email,
+        password,
+        accountType,
+        preferredLanguage: ['fa', 'ps', 'en'].includes(preferredLanguage) ? preferredLanguage : 'fa',
+        termsVersion: '2026-09-26-v1',
+        privacyVersion: '2026-09-26-v1',
+      });
+
+      const token = issueSessionToken({
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+        userType: user.userType,
+      });
+
+      return res.status(201).json({ success: true, token, user });
+    } catch (error: any) {
+      const duplicate = error?.code === '23505';
+      return res.status(duplicate ? 409 : 500).json({
+        error: duplicate ? 'An account with this email already exists.' : 'Could not create the account.',
+      });
+    }
+  });
+
+  app.post('/api/auth/login', adminLoginLimiter, async (req: Request, res: Response) => {
+    const { email, password } = req.body || {};
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Email and password are required.' });
+    }
+
+    // Environment-backed owner account is recognized by the same login page.
+    const owner = await verifyAdminCredentials(email, password);
+    if (owner.ok) {
+      return res.json({
+        success: true,
+        token: issueAdminToken(owner.email),
+        user: {
+          id: 'usr-admin-1',
+          email: owner.email,
+          fullName: 'NAWBAT Administrator',
+          userType: 'staff',
+          role: 'superadmin',
+          roleName: 'Super Admin',
+          permissions: ['*'],
+          status: 'active',
+          kycStatus: 'verified',
+        },
+      });
+    }
+
+    if (!hasPersistentDatabase()) {
+      return res.status(503).json({ error: 'Account database is not configured yet.' });
+    }
+
+    const row = await findAuthUserByEmail(email);
+    if (!row?.password_hash) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    const matches = await bcrypt.compare(password, row.password_hash);
+    if (!matches) return res.status(401).json({ error: 'Invalid email or password.' });
+    if (row.status === 'blocked' || row.status === 'suspended') {
+      return res.status(403).json({ error: 'This account is not currently allowed to sign in.' });
+    }
+
+    const user = safeAuthUser(row);
+    await markLogin(user.id);
+    const token = issueSessionToken({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      userType: user.userType,
+      permissions: user.permissions,
+    });
+
+    return res.json({ success: true, token, user });
+  });
+
+  app.get('/api/auth/me', requireSession, async (req: Request, res: Response) => {
+    const session = (req as Request & { session?: any }).session;
+    if (session?.sub === 'usr-admin-1') {
+      return res.json({
+        id: 'usr-admin-1',
+        email: session.email,
+        fullName: 'NAWBAT Administrator',
+        userType: 'staff',
+        role: 'superadmin',
+        roleName: 'Super Admin',
+        permissions: ['*'],
+        status: 'active',
+        kycStatus: 'verified',
+      });
+    }
+    if (!hasPersistentDatabase()) return res.status(503).json({ error: 'Account database is unavailable.' });
+
+    const row = await findAuthUserByEmail(session.email);
+    if (!row) return res.status(404).json({ error: 'Account not found.' });
+    return res.json(safeAuthUser(row));
   });
 
   // -------------------------------------------------------------
@@ -98,22 +251,68 @@ export async function createApp(serveFrontend = true) {
   app.use('/api/admin', requireAdmin);
 
   // -------------------------------------------------------------
-  // User account APIs
+  // Authenticated user account APIs
   // -------------------------------------------------------------
-  // Public buyer/seller authentication is intentionally disabled until
-  // a signed user-session flow is connected to persistent users.
-  app.get('/api/user/profile', (_req: Request, res: Response) => {
-    return res.status(501).json({
-      error: 'User authentication is not enabled yet.',
-      code: 'USER_AUTH_PENDING',
+  app.get('/api/user/profile', requireSession, async (req: Request, res: Response) => {
+    const session = (req as Request & { session?: any }).session;
+    if (session?.sub === 'usr-admin-1') {
+      return res.json({
+        id: 'usr-admin-1',
+        fullName: 'NAWBAT Administrator',
+        email: session.email,
+        userType: 'staff',
+        role: 'superadmin',
+        kycStatus: 'verified',
+        balanceAFN: 0,
+        escrowLockedAFN: 0,
+        notificationPreferences: {},
+      });
+    }
+
+    if (!hasPersistentDatabase()) return res.status(503).json({ error: 'Account database is unavailable.' });
+    const user = await getPersistentUser(session.sub);
+    if (!user) return res.status(404).json({ error: 'Account not found.' });
+
+    const prefResult = await getPool().query(
+      'select notification_preferences from users where id = $1 limit 1',
+      [session.sub],
+    );
+
+    return res.json({
+      ...user,
+      notificationPreferences: prefResult.rows[0]?.notification_preferences || {},
     });
   });
 
-  app.put('/api/user/notification-preferences', (_req: Request, res: Response) => {
-    return res.status(501).json({
-      error: 'User authentication is not enabled yet.',
-      code: 'USER_AUTH_PENDING',
-    });
+  app.put('/api/user/notification-preferences', requireSession, async (req: Request, res: Response) => {
+    const session = (req as Request & { session?: any }).session;
+    if (session?.sub === 'usr-admin-1') {
+      return res.status(400).json({ error: 'Owner notification preferences are managed separately.' });
+    }
+    if (!hasPersistentDatabase()) return res.status(503).json({ error: 'Account database is unavailable.' });
+
+    const current = await getPool().query(
+      'select notification_preferences from users where id = $1 limit 1',
+      [session.sub],
+    );
+    if (!current.rows[0]) return res.status(404).json({ error: 'Account not found.' });
+
+    const existing = current.rows[0].notification_preferences || {};
+    const next = {
+      ...existing,
+      emailOutbid: Boolean(req.body?.emailOutbid),
+      emailClosingSoon: Boolean(req.body?.emailClosingSoon),
+      emailPaymentReceipts: req.body?.emailHesabPayReceipts !== undefined
+        ? Boolean(req.body.emailHesabPayReceipts)
+        : Boolean(existing.emailPaymentReceipts),
+    };
+
+    await getPool().query(
+      'update users set notification_preferences = $1::jsonb, updated_at = now() where id = $2',
+      [JSON.stringify(next), session.sub],
+    );
+
+    return res.json({ success: true, notificationPreferences: next });
   });
 
   // -------------------------------------------------------------
@@ -176,7 +375,7 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 2. User Management APIs
   // -------------------------------------------------------------
-  app.get('/api/admin/users', async (req: Request, res: Response) => {
+  app.get('/api/admin/users', requireRoles('auction_manager','finance','kyc','support','logistics','moderator'), async (req: Request, res: Response) => {
     const { search, userType, status, kycStatus } = req.query;
 
     if (hasPersistentDatabase()) {
@@ -211,7 +410,7 @@ export async function createApp(serveFrontend = true) {
     return res.json(list);
   });
 
-  app.get('/api/admin/users/:id', async (req: Request, res: Response) => {
+  app.get('/api/admin/users/:id', requireRoles('auction_manager','finance','kyc','support','logistics','moderator'), async (req: Request, res: Response) => {
     if (hasPersistentDatabase()) {
       try {
         const user = await getPersistentUser(req.params.id);
@@ -232,10 +431,13 @@ export async function createApp(serveFrontend = true) {
     return res.json({ user, kyc, invoices, disputes, lots });
   });
 
-  app.post('/api/admin/users', async (req: Request, res: Response) => {
-    const { fullName, fullNameEn, email, phone, userType, roleId, tazkiraNumber } = req.body || {};
+  app.post('/api/admin/users', requireRoles(), async (req: Request, res: Response) => {
+    const { fullName, fullNameEn, email, phone, userType, roleId, tazkiraNumber, temporaryPassword } = req.body || {};
     if (!fullName || !userType || (!email && !phone)) {
       return res.status(400).json({ error: 'fullName, userType, and an email or phone number are required.' });
+    }
+    if (userType === 'staff' && (typeof temporaryPassword !== 'string' || temporaryPassword.length < 10)) {
+      return res.status(400).json({ error: 'Staff accounts require a temporary password of at least 10 characters.' });
     }
 
     if (hasPersistentDatabase()) {
@@ -248,6 +450,7 @@ export async function createApp(serveFrontend = true) {
           userType,
           tazkiraNumber,
           roleKey: typeof roleId === 'string' ? roleId.replace(/^role-/, '') : undefined,
+          temporaryPassword: typeof temporaryPassword === 'string' ? temporaryPassword : undefined,
         });
         db.addAuditLog('NAWBAT Administrator', 'CREATE_USER', 'user_management', user?.id || 'database-user', `Created ${userType} account for ${fullName}`);
         return res.status(201).json({ success: true, user });
@@ -287,7 +490,7 @@ export async function createApp(serveFrontend = true) {
     return res.status(201).json({ success: true, user: newUser });
   });
 
-  app.put('/api/admin/users/:id', async (req: Request, res: Response) => {
+  app.put('/api/admin/users/:id', requireRoles(), async (req: Request, res: Response) => {
     const { status, isBiddingBlocked, isSellingBlocked, kycStatus, newNote, roleId, roleTitle } = req.body || {};
 
     if (hasPersistentDatabase()) {
@@ -320,11 +523,11 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 3. Staff & Permissions Matrix
   // -------------------------------------------------------------
-  app.get('/api/admin/roles', (req: Request, res: Response) => {
+  app.get('/api/admin/roles', requireRoles(), (req: Request, res: Response) => {
     res.json(db.roles);
   });
 
-  app.put('/api/admin/roles/:id', (req: Request, res: Response) => {
+  app.put('/api/admin/roles/:id', requireRoles(), (req: Request, res: Response) => {
     const role = db.roles.find(r => r.id === req.params.id);
     if (!role) return res.status(404).json({ error: 'Role not found' });
     const { permissions, description } = req.body;
@@ -338,7 +541,7 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 4. Auction Operations & Lifecycle Management
   // -------------------------------------------------------------
-  app.get('/api/admin/auctions', (req: Request, res: Response) => {
+  app.get('/api/admin/auctions', requireRoles('auction_manager','auctioneer','cataloger','moderator','support'), (req: Request, res: Response) => {
     const { status, province, category } = req.query;
     let list = [...db.auctions];
 
@@ -355,7 +558,7 @@ export async function createApp(serveFrontend = true) {
     res.json(list);
   });
 
-  app.post('/api/admin/auctions', (req: Request, res: Response) => {
+  app.post('/api/admin/auctions', requireRoles('auction_manager','cataloger'), (req: Request, res: Response) => {
     const body = req.body;
     const newLot: AuctionRecord = {
       id: `lot-${Date.now()}`,
@@ -389,7 +592,7 @@ export async function createApp(serveFrontend = true) {
     res.json({ success: true, lot: newLot });
   });
 
-  app.put('/api/admin/auctions/:id/action', (req: Request, res: Response) => {
+  app.put('/api/admin/auctions/:id/action', requireRoles('auction_manager','auctioneer'), (req: Request, res: Response) => {
     const lot = db.auctions.find(a => a.id === req.params.id);
     if (!lot) return res.status(404).json({ error: 'Auction lot not found' });
 
@@ -428,11 +631,11 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 5. KYC & Tazkira Identity Verification Center
   // -------------------------------------------------------------
-  app.get('/api/admin/kyc', (req: Request, res: Response) => {
+  app.get('/api/admin/kyc', requireRoles('kyc'), (req: Request, res: Response) => {
     res.json(db.kycCases);
   });
 
-  app.put('/api/admin/kyc/:id/decision', (req: Request, res: Response) => {
+  app.put('/api/admin/kyc/:id/decision', requireRoles('kyc'), (req: Request, res: Response) => {
     const kyc = db.kycCases.find(k => k.id === req.params.id);
     if (!kyc) return res.status(404).json({ error: 'KYC case not found' });
 
@@ -455,7 +658,7 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 6. Finance & HesabPay Settlement Center
   // -------------------------------------------------------------
-  app.get('/api/admin/finance/summary', (req: Request, res: Response) => {
+  app.get('/api/admin/finance/summary', requireRoles('finance'), (req: Request, res: Response) => {
     const totalHeldEscrow = db.invoices
       .filter(i => i.paymentStatus === 'escrow_locked')
       .reduce((acc, i) => acc + i.totalPayableAFN, 0);
@@ -482,15 +685,15 @@ export async function createApp(serveFrontend = true) {
     });
   });
 
-  app.get('/api/admin/finance/invoices', (req: Request, res: Response) => {
+  app.get('/api/admin/finance/invoices', requireRoles('finance'), (req: Request, res: Response) => {
     res.json(db.invoices);
   });
 
-  app.get('/api/admin/finance/ledger', (req: Request, res: Response) => {
+  app.get('/api/admin/finance/ledger', requireRoles('finance'), (req: Request, res: Response) => {
     res.json(db.ledger);
   });
 
-  app.post('/api/admin/finance/payout', (req: Request, res: Response) => {
+  app.post('/api/admin/finance/payout', requireRoles('finance'), (req: Request, res: Response) => {
     if (process.env.NODE_ENV === 'production') {
       return res.status(501).json({ error: 'Production HesabPay payout execution is disabled until the signed merchant payout API is integrated.' });
     }
@@ -522,7 +725,7 @@ export async function createApp(serveFrontend = true) {
     res.json({ success: true, invoice: inv, ledgerEntry: entry });
   });
 
-  app.post('/api/admin/finance/refund', (req: Request, res: Response) => {
+  app.post('/api/admin/finance/refund', requireRoles('finance'), (req: Request, res: Response) => {
     if (process.env.NODE_ENV === 'production') {
       return res.status(501).json({ error: 'Production HesabPay refund execution is disabled until the signed merchant refund API is integrated.' });
     }
@@ -553,11 +756,11 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 7. Fraud & Security Risk Engine
   // -------------------------------------------------------------
-  app.get('/api/admin/fraud/flags', (req: Request, res: Response) => {
+  app.get('/api/admin/fraud/flags', requireRoles('moderator'), (req: Request, res: Response) => {
     res.json(db.fraudFlags);
   });
 
-  app.put('/api/admin/fraud/flags/:id', (req: Request, res: Response) => {
+  app.put('/api/admin/fraud/flags/:id', requireRoles('moderator'), (req: Request, res: Response) => {
     const flag = db.fraudFlags.find(f => f.id === req.params.id);
     if (!flag) return res.status(404).json({ error: 'Fraud flag not found' });
 
@@ -571,11 +774,11 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 8. Disputes & Mediation Center
   // -------------------------------------------------------------
-  app.get('/api/admin/disputes', (req: Request, res: Response) => {
+  app.get('/api/admin/disputes', requireRoles('support','moderator'), (req: Request, res: Response) => {
     res.json(db.disputes);
   });
 
-  app.post('/api/admin/disputes/:id/message', (req: Request, res: Response) => {
+  app.post('/api/admin/disputes/:id/message', requireRoles('support'), (req: Request, res: Response) => {
     const disp = db.disputes.find(d => d.id === req.params.id);
     if (!disp) return res.status(404).json({ error: 'Dispute not found' });
 
@@ -591,7 +794,7 @@ export async function createApp(serveFrontend = true) {
     res.json({ success: true, dispute: disp });
   });
 
-  app.put('/api/admin/disputes/:id/resolve', (req: Request, res: Response) => {
+  app.put('/api/admin/disputes/:id/resolve', requireRoles('support'), (req: Request, res: Response) => {
     const disp = db.disputes.find(d => d.id === req.params.id);
     if (!disp) return res.status(404).json({ error: 'Dispute not found' });
 
@@ -606,11 +809,11 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 9. Logistics, Pickup & QR Item Release
   // -------------------------------------------------------------
-  app.get('/api/admin/logistics', (req: Request, res: Response) => {
+  app.get('/api/admin/logistics', requireRoles('logistics'), (req: Request, res: Response) => {
     res.json(db.deliveries);
   });
 
-  app.post('/api/admin/logistics/verify-qr', (req: Request, res: Response) => {
+  app.post('/api/admin/logistics/verify-qr', requireRoles('logistics'), (req: Request, res: Response) => {
     const { qrCode, pinCode, staffName } = req.body;
     const item = db.deliveries.find(d => d.qrReleaseCode === qrCode || d.pinCode === pinCode);
     if (!item) {
@@ -628,11 +831,11 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 10. Platform Settings & Global Rules
   // -------------------------------------------------------------
-  app.get('/api/admin/settings', (req: Request, res: Response) => {
+  app.get('/api/admin/settings', requireRoles(), (req: Request, res: Response) => {
     res.json(db.settings);
   });
 
-  app.put('/api/admin/settings', (req: Request, res: Response) => {
+  app.put('/api/admin/settings', requireRoles(), (req: Request, res: Response) => {
     const updates = req.body;
     Object.assign(db.settings, updates);
 
@@ -643,7 +846,7 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 11. Tamper-Evident Immutable Audit Trail
   // -------------------------------------------------------------
-  app.get('/api/admin/audit-logs', (req: Request, res: Response) => {
+  app.get('/api/admin/audit-logs', requireRoles(), (req: Request, res: Response) => {
     res.json(db.auditLogs);
   });
 

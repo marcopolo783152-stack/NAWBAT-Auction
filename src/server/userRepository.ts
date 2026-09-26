@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { getPool } from './postgres';
 
 export function hasPersistentDatabase() {
@@ -8,6 +9,7 @@ function roleTitleFor(userType: string) {
   if (userType === 'staff') return 'Staff';
   if (userType === 'business') return 'Business Seller';
   if (userType === 'seller') return 'Seller';
+  if (userType === 'customer') return 'Customer';
   return 'Buyer';
 }
 
@@ -102,25 +104,28 @@ export async function createPersistentUser(input: {
   fullNameEn?: string;
   email?: string;
   phone?: string;
-  userType: 'buyer' | 'seller' | 'business' | 'staff';
+  userType: 'buyer' | 'customer' | 'seller' | 'business' | 'staff';
   tazkiraNumber?: string;
   roleKey?: string;
+  temporaryPassword?: string;
 }) {
   const pool = getPool();
   const client = await pool.connect();
 
   try {
     await client.query('begin');
+    const passwordHash = input.temporaryPassword ? await bcrypt.hash(input.temporaryPassword, 12) : null;
     const userResult = await client.query(
       `insert into users
-        (full_name, full_name_en, email, phone, user_type, status, kyc_status, tazkira_number)
-       values ($1,$2,$3,$4,$5,'active','pending',$6)
+        (full_name, full_name_en, email, phone, password_hash, user_type, status, kyc_status, tazkira_number)
+       values ($1,$2,$3,$4,$5,$6,'active','pending',$7)
        returning *`,
       [
         input.fullName,
         input.fullNameEn || input.fullName,
         input.email || null,
         input.phone || null,
+        passwordHash,
         input.userType,
         input.tazkiraNumber || null,
       ],

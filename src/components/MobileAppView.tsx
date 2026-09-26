@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AuctionLot, CategoryId, Language, Province } from '../types/auction';
 import { translations } from '../translations';
+import { NawbatUser } from '../services/authApi';
 import { Logo } from './Logo';
 import { 
   Home, 
@@ -42,6 +43,7 @@ interface MobileAppViewProps {
   onOpenSubmitLot: () => void;
   onSwitchToWeb: () => void;
   onOpenProfile?: () => void;
+  currentUser?: NawbatUser | null;
 }
 
 export const MobileAppView: React.FC<MobileAppViewProps> = ({
@@ -58,6 +60,7 @@ export const MobileAppView: React.FC<MobileAppViewProps> = ({
   onOpenSubmitLot,
   onSwitchToWeb,
   onOpenProfile,
+  currentUser,
 }) => {
   const t = translations[currentLang];
   const [mobileTab, setMobileTab] = useState<'home' | 'search' | 'live' | 'saved' | 'profile'>('home');
@@ -164,14 +167,14 @@ export const MobileAppView: React.FC<MobileAppViewProps> = ({
               <div className="p-4 flex flex-col gap-4">
                 <div className="bg-white p-4 rounded-2xl border border-[#003a2f]/10 shadow-xs flex items-center gap-3">
                   <div className="w-14 h-14 rounded-full bg-[#003a2f] text-white flex items-center justify-center font-serif text-xl font-bold ring-4 ring-[#afefdc]/50">
-                    NA
+                    {currentUser ? currentUser.fullName.slice(0, 2).toUpperCase() : 'NA'}
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-serif font-bold text-sm text-[#111d27]">مهمان</h3>
-                    <span className="text-[11px] text-[#326286] font-medium block">حساب کاربری هنوز وارد نشده</span>
+                    <h3 className="font-serif font-bold text-sm text-[#111d27]">{currentUser?.fullName || 'مهمان'}</h3>
+                    <span className="text-[11px] text-[#326286] font-medium block">{currentUser?.email || 'حساب کاربری هنوز وارد نشده'}</span>
                     <span className="inline-flex items-center gap-1 bg-[#afefdc] text-[#065043] text-[10px] px-2 py-0.5 rounded-full font-bold mt-1">
                       <ShieldCheck className="w-3 h-3 text-[#003a2f]" />
-                      ورود کاربر لازم است
+                      {currentUser ? (currentUser.roleName || currentUser.role) : 'ورود کاربر لازم است'}
                     </span>
                   </div>
                 </div>

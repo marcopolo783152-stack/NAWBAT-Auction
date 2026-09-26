@@ -1,7 +1,8 @@
 const TOKEN_KEY = 'nawbat_admin_token';
+const SESSION_TOKEN_KEY = 'nawbat_session_token';
 
 function getToken() {
-  return sessionStorage.getItem(TOKEN_KEY);
+  return sessionStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(SESSION_TOKEN_KEY);
 }
 
 function authHeaders(extra?: Record<string, string>) {
@@ -215,7 +216,7 @@ export const adminApi = {
 
   async getUserProfile() {
     try {
-      const res = await fetch('/api/user/profile');
+      const res = await fetch('/api/user/profile', { headers: authHeaders() });
       if (!res.ok) throw new Error('Failed to fetch profile');
       return await res.json();
     } catch { return null; }
@@ -223,7 +224,7 @@ export const adminApi = {
 
   async updateNotificationPreferences(preferences: { emailOutbid: boolean; emailClosingSoon: boolean; emailHesabPayReceipts?: boolean }) {
     const res = await fetch('/api/user/notification-preferences', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(preferences),
+      method: 'PUT', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(preferences),
     });
     return await res.json();
   },

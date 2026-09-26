@@ -15,11 +15,12 @@ import { LotDetailModal } from './components/LotDetailModal';
 import { SubmitLotModal } from './components/SubmitLotModal';
 import { MobileAppView } from './components/MobileAppView';
 import { EbthBrowseCatalog } from './components/EbthBrowseCatalog';
-import { AdminLoginModal } from './components/AdminLoginModal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { UserProfileModal } from './components/UserProfileModal';
-import { adminAuth } from './services/adminApi';
-import { ShieldCheck, CheckCircle2, Clock, X } from 'lucide-react';
+import { authApi, NawbatUser } from './services/authApi';
+import { LoginPage } from './components/LoginPage';
+import { FeesPoliciesPage } from './components/FeesPoliciesPage';
+import { CheckCircle2, X } from 'lucide-react';
 
 export default function App() {
   const [currentLang, setCurrentLang] = useState<Language>('fa');
@@ -29,16 +30,15 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<CategoryId>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [lots, setLots] = useState<AuctionLot[]>(INITIAL_AUCTION_LOTS);
-  const [watchlist, setWatchlist] = useState<string[]>(['lot-2', 'lot-3']);
-  const [myBiddedLotIds, setMyBiddedLotIds] = useState<string[]>(['lot-1']);
+  const [watchlist, setWatchlist] = useState<string[]>([]);
+  const [myBiddedLotIds, setMyBiddedLotIds] = useState<string[]>([]);
+  const [currentUser, setCurrentUser] = useState<NawbatUser | null>(() => authApi.currentUser());
 
   // Modals state
   const [selectedLot, setSelectedLot] = useState<AuctionLot | null>(null);
   const [bidModalLot, setBidModalLot] = useState<AuctionLot | null>(null);
   const [isSubmitLotOpen, setIsSubmitLotOpen] = useState(false);
   const [consultationModalOpen, setConsultationModalOpen] = useState(false);
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => adminAuth.hasSession());
-  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
 
   // Live Toast Notification
@@ -51,17 +51,81 @@ export default function App() {
   }, [currentLang]);
 
   useEffect(() => {
+    if (!authApi.hasSession()) return;
+    authApi.refresh().then((user) => {
+      if (user) setCurrentUser(user);
+      else setCurrentUser(null);
+    });
+  }, []);
+
+  useEffect(() => {
     const handleExpired = () => {
-      setIsAdminLoggedIn(false);
-      setActiveTab('home');
+      authApi.clearSession();
+      setCurrentUser(null);
+      setActiveTab('login');
       setToastMessage({
-        title: currentLang === 'en' ? 'Admin session expired' : 'نشست مدیریت پایان یافت',
-        subtitle: currentLang === 'en' ? 'Please sign in again.' : 'برای ادامه دوباره وارد حساب مدیریت شوید.',
+        title: currentLang === 'en' ? 'Session expired' : 'نشست حساب پایان یافت',
+        subtitle: currentLang === 'en' ? 'Please sign in again.' : 'برای ادامه دوباره وارد حساب شوید.',
       });
     };
     window.addEventListener('nawbat-admin-session-expired', handleExpired);
     return () => window.removeEventListener('nawbat-admin-session-expired', handleExpired);
   }, [currentLang]);
+
+  const handleAuthenticated = (user: NawbatUser) => {
+    setCurrentUser(user);
+    const staff = authApi.isStaff(user);
+    setActiveTab(staff ? 'admin' : 'home');
+    setToastMessage({
+      title: currentLang === 'en' ? `Welcome, ${user.fullName}` : `خوش آمدید، ${user.fullName}`,
+      subtitle: staff
+        ? (currentLang === 'en' ? `Signed in as ${user.roleName || user.role}.` : `ورود با نقش ${user.roleName || user.role} انجام شد.`)
+        : (currentLang === 'en' ? 'Your NAWBAT account is active.' : 'حساب نوبت شما فعال است.'),
+    });
+  };
+
+  const handleLogout = () => {
+    authApi.clearSession();
+    sessionStorage.removeItem('nawbat_admin_token');
+    setCurrentUser(null);
+    setActiveTab('home');
+    setIsUserProfileOpen(false);
+    setToastMessage({
+      title: currentLang === 'en' ? 'Signed out' : 'از حساب خارج شدید',
+      subtitle: currentLang === 'en' ? 'Your session has ended safely.' : 'نشست حساب شما با موفقیت پایان یافت.',
+    });
+  };
+
+  const handleOpenBidModal = (lot: AuctionLot) => {
+    if (!currentUser) {
+      setActiveTab('login');
+      setToastMessage({
+        title: currentLang === 'en' ? 'Sign in to bid' : 'برای پیشنهاد وارد شوید',
+        subtitle: currentLang === 'en' ? 'A buyer account is required before a bid can be submitted.' : 'برای ثبت پیشنهاد باید وارد حساب خود شوید.',
+      });
+      return;
+    }
+    setBidModalLot(lot);
+  };
+
+  const handleOpenSubmitLot = () => {
+    if (!currentUser) {
+      setActiveTab('login');
+      setToastMessage({
+        title: currentLang === 'en' ? 'Seller sign-in required' : 'ورود فروشنده لازم است',
+        subtitle: currentLang === 'en' ? 'Sign in or create a seller/business account to submit an item.' : 'برای ثبت کالا وارد شوید یا حساب فروشنده/تجارتی بسازید.',
+      });
+      return;
+    }
+    if (!['seller','business'].includes(currentUser.userType) && !authApi.isStaff(currentUser)) {
+      setToastMessage({
+        title: currentLang === 'en' ? 'Seller account required' : 'حساب فروشنده لازم است',
+        subtitle: currentLang === 'en' ? 'Your current account is not enabled for selling.' : 'حساب فعلی شما برای فروش فعال نیست.',
+      });
+      return;
+    }
+    setIsSubmitLotOpen(true);
+  };
 
   // Handle Search Submission
   const handleSearchSubmit = () => {
@@ -72,6 +136,11 @@ export default function App() {
 
   // Watchlist toggle
   const handleToggleWatchlist = (lotId: string) => {
+    if (!currentUser) {
+      setActiveTab('login');
+      setToastMessage({ title: currentLang === 'en' ? 'Sign in to save items' : 'برای ذخیره وارد شوید', subtitle: currentLang === 'en' ? 'Your watchlist belongs to your NAWBAT account.' : 'لیست نشان‌شده‌ها به حساب نوبت شما متصل است.' });
+      return;
+    }
     setWatchlist((prev) => {
       const exists = prev.includes(lotId);
       const updated = exists ? prev.filter((id) => id !== lotId) : [...prev, lotId];
@@ -85,6 +154,11 @@ export default function App() {
 
   // Handle Bid Placement
   const handleBidSubmit = (lotId: string, amountAFN: number, isProxy: boolean, maxProxyAFN?: number) => {
+    if (!currentUser) {
+      setBidModalLot(null);
+      setActiveTab('login');
+      return;
+    }
     setLots((prevLots) => {
       return prevLots.map((l) => {
         if (l.id === lotId) {
@@ -102,8 +176,8 @@ export default function App() {
           const newBidHistory = [
             {
               id: `bid-${Date.now()}`,
-              bidderName: 'احمدشاه رضایی (شما)',
-              bidderMaskedId: 'شما (Bidder ***84)',
+              bidderName: `${currentUser.fullName} (${currentLang === 'en' ? 'You' : 'شما'})`,
+              bidderMaskedId: currentLang === 'en' ? 'You' : 'شما',
               amountAFN,
               timestamp: 'هم‌اکنون',
               isWinning: true,
@@ -151,8 +225,8 @@ export default function App() {
   const handleLotCreated = (newLot: AuctionLot) => {
     setLots((prev) => [newLot, ...prev]);
     setToastMessage({
-      title: 'لوط جدید منتشر گردید',
-      subtitle: `مزایده ${newLot.title} با شناسه ${newLot.lotNumber} وارد شبکه شد.`,
+      title: currentLang === 'en' ? 'Listing submitted for review' : 'لوط برای بررسی ثبت شد',
+      subtitle: currentLang === 'en' ? `Lot ${newLot.lotNumber} is waiting for admin approval.` : `لوط ${newLot.lotNumber} پس از تایید مدیریت منتشر خواهد شد.`,
     });
   };
 
@@ -207,12 +281,16 @@ export default function App() {
           selectedCategory={selectedCategory}
           onCategorySelect={setSelectedCategory}
           onSelectLot={setSelectedLot}
-          onQuickBid={setBidModalLot}
+          onQuickBid={handleOpenBidModal}
           watchlist={watchlist}
           onToggleWatchlist={handleToggleWatchlist}
-          onOpenSubmitLot={() => setIsSubmitLotOpen(true)}
+          onOpenSubmitLot={handleOpenSubmitLot}
           onSwitchToWeb={() => setViewMode('web')}
-          onOpenProfile={() => setIsUserProfileOpen(true)}
+          currentUser={currentUser}
+          onOpenProfile={() => {
+            if (currentUser) setIsUserProfileOpen(true);
+            else { setViewMode('web'); setActiveTab('login'); }
+          }}
         />
       ) : (
         /* Full Desktop / Responsive Web Platform */
@@ -228,16 +306,16 @@ export default function App() {
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             onSearchSubmit={handleSearchSubmit}
-            onOpenSubmitLot={() => setIsSubmitLotOpen(true)}
+            onOpenSubmitLot={handleOpenSubmitLot}
             viewMode={viewMode}
             onToggleViewMode={() => setViewMode(viewMode === 'web' ? 'mobile_app' : 'web')}
             activeTab={activeTab}
             onTabChange={setActiveTab}
             myBidsCount={myBiddedLotIds.length}
             watchlistCount={watchlist.length}
-            isAdminLoggedIn={isAdminLoggedIn}
-            onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
-            onOpenProfile={() => setIsUserProfileOpen(true)}
+            currentUser={currentUser}
+            onOpenProfile={() => currentUser ? setIsUserProfileOpen(true) : setActiveTab('login')}
+            onLogout={handleLogout}
           />
 
           {/* Announcement & System Trust Ribbon */}
@@ -245,7 +323,12 @@ export default function App() {
 
           {/* Body Content */}
           <main className="flex-1 w-full">
-            {activeTab === 'admin' ? (
+            {activeTab === 'login' ? (
+              <LoginPage currentLang={currentLang} onAuthenticated={handleAuthenticated} onViewPolicies={() => setActiveTab('fees')} />
+            ) : activeTab === 'fees' ? (
+              <FeesPoliciesPage currentLang={currentLang} />
+            ) : activeTab === 'admin' ? (
+              authApi.isStaff(currentUser) ? (
               /* Dedicated Admin Dashboard View */
               <AdminDashboard
                 lots={lots}
@@ -274,24 +357,20 @@ export default function App() {
                     subtitle: 'زمان پایان حراج برای اعمال قانون ضدقیچی افزایش یافت.',
                   });
                 }}
-                onLogout={() => {
-                  adminAuth.clearToken();
-                  setIsAdminLoggedIn(false);
-                  setActiveTab('home');
-                  setToastMessage({
-                    title: 'خروج از حساب مدیریت',
-                    subtitle: 'شما به حالت کاربر عادی بازگشتید.',
-                  });
-                }}
+                onLogout={handleLogout}
                 currentLang={currentLang}
+                currentUser={currentUser!}
               />
+              ) : (
+                <LoginPage currentLang={currentLang} onAuthenticated={handleAuthenticated} onViewPolicies={() => setActiveTab('fees')} />
+              )
             ) : activeTab === 'browse' ? (
               /* Dedicated EBTH Browse Catalog View */
               <EbthBrowseCatalog
                 lots={lots}
                 currentLang={currentLang}
                 onSelectLot={setSelectedLot}
-                onQuickBid={setBidModalLot}
+                onQuickBid={handleOpenBidModal}
                 watchlist={watchlist}
                 onToggleWatchlist={handleToggleWatchlist}
                 initialCategory={selectedCategory}
@@ -303,7 +382,7 @@ export default function App() {
                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#003a2f]/10">
                   <div>
                     <h2 className="font-serif text-2xl font-bold text-[#003a2f]">مزایده‌های تحت پیشنهاد من</h2>
-                    <p className="text-xs text-[#3f4945]">لیست اقلامی که با سپرده امانی HesabPay پیشنهاد ثبت نموده‌اید.</p>
+                    <p className="text-xs text-[#3f4945]">لیست اقلامی که با حساب شما پیشنهاد ثبت شده است.</p>
                   </div>
                   <button
                     onClick={() => setActiveTab('home')}
@@ -378,7 +457,7 @@ export default function App() {
                           حذف از نشان‌شده‌ها
                         </button>
                         <button
-                          onClick={() => setBidModalLot(lot)}
+                          onClick={() => handleOpenBidModal(lot)}
                           className="bg-[#003a2f] text-white px-3 py-1 rounded text-xs font-semibold"
                         >
                           ثبت پیشنهاد
@@ -410,7 +489,7 @@ export default function App() {
                   lots={displayedLots}
                   currentLang={currentLang}
                   onSelectLot={setSelectedLot}
-                  onQuickBid={setBidModalLot}
+                  onQuickBid={handleOpenBidModal}
                   watchlist={watchlist}
                   onToggleWatchlist={handleToggleWatchlist}
                 />
@@ -420,7 +499,7 @@ export default function App() {
                   lots={lots}
                   currentLang={currentLang}
                   onSelectLot={setSelectedLot}
-                  onQuickBid={setBidModalLot}
+                  onQuickBid={handleOpenBidModal}
                   watchlist={watchlist}
                   onToggleWatchlist={handleToggleWatchlist}
                   initialCategory={selectedCategory}
@@ -460,7 +539,7 @@ export default function App() {
         onClose={() => setSelectedLot(null)}
         onOpenBidModal={(lot) => {
           setSelectedLot(null);
-          setBidModalLot(lot);
+          handleOpenBidModal(lot);
         }}
         isBookmarked={selectedLot ? watchlist.includes(selectedLot.id) : false}
         onToggleWatchlist={handleToggleWatchlist}
@@ -522,21 +601,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      {/* Admin Login Modal */}
-      <AdminLoginModal
-        isOpen={isAdminLoginOpen}
-        onClose={() => setIsAdminLoginOpen(false)}
-        onLoginSuccess={() => {
-          setIsAdminLoggedIn(true);
-          setActiveTab('admin');
-          setToastMessage({
-            title: 'ورود موفق مدیر ارشد',
-            subtitle: 'به پنل نظارت و مدیریت سامانه نوبت خوش آمدید.',
-          });
-        }}
-        currentLang={currentLang}
-      />
 
       {/* User Profile & Email Notifications Modal */}
       <UserProfileModal
