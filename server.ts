@@ -6,7 +6,7 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { db, UserRecord, AuctionRecord } from './src/server/database';
-import { issueAdminToken, issueSessionToken, requireAdmin, requireSession, verifyAdminCredentials } from './src/server/auth';
+import { issueAdminToken, issueSessionToken, requireAdmin, requireRoles, requireSession, verifyAdminCredentials } from './src/server/auth';
 import { createPersistentUser, getPersistentUser, hasPersistentDatabase, listPersistentUsers, updatePersistentUser } from './src/server/userRepository';
 import { findAuthUserByEmail, markLogin, registerPublicUser, safeAuthUser } from './src/server/authRepository';
 import { NAWBAT_FEES, quoteFees } from './src/server/fees';
@@ -375,7 +375,7 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 2. User Management APIs
   // -------------------------------------------------------------
-  app.get('/api/admin/users', async (req: Request, res: Response) => {
+  app.get('/api/admin/users', requireRoles('auction_manager','finance','kyc','support','logistics','moderator'), async (req: Request, res: Response) => {
     const { search, userType, status, kycStatus } = req.query;
 
     if (hasPersistentDatabase()) {
@@ -410,7 +410,7 @@ export async function createApp(serveFrontend = true) {
     return res.json(list);
   });
 
-  app.get('/api/admin/users/:id', async (req: Request, res: Response) => {
+  app.get('/api/admin/users/:id', requireRoles('auction_manager','finance','kyc','support','logistics','moderator'), async (req: Request, res: Response) => {
     if (hasPersistentDatabase()) {
       try {
         const user = await getPersistentUser(req.params.id);
@@ -431,7 +431,7 @@ export async function createApp(serveFrontend = true) {
     return res.json({ user, kyc, invoices, disputes, lots });
   });
 
-  app.post('/api/admin/users', async (req: Request, res: Response) => {
+  app.post('/api/admin/users', requireRoles(), async (req: Request, res: Response) => {
     const { fullName, fullNameEn, email, phone, userType, roleId, tazkiraNumber, temporaryPassword } = req.body || {};
     if (!fullName || !userType || (!email && !phone)) {
       return res.status(400).json({ error: 'fullName, userType, and an email or phone number are required.' });
@@ -490,7 +490,7 @@ export async function createApp(serveFrontend = true) {
     return res.status(201).json({ success: true, user: newUser });
   });
 
-  app.put('/api/admin/users/:id', async (req: Request, res: Response) => {
+  app.put('/api/admin/users/:id', requireRoles(), async (req: Request, res: Response) => {
     const { status, isBiddingBlocked, isSellingBlocked, kycStatus, newNote, roleId, roleTitle } = req.body || {};
 
     if (hasPersistentDatabase()) {
@@ -523,11 +523,11 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 3. Staff & Permissions Matrix
   // -------------------------------------------------------------
-  app.get('/api/admin/roles', (req: Request, res: Response) => {
+  app.get('/api/admin/roles', requireRoles(), (req: Request, res: Response) => {
     res.json(db.roles);
   });
 
-  app.put('/api/admin/roles/:id', (req: Request, res: Response) => {
+  app.put('/api/admin/roles/:id', requireRoles(), (req: Request, res: Response) => {
     const role = db.roles.find(r => r.id === req.params.id);
     if (!role) return res.status(404).json({ error: 'Role not found' });
     const { permissions, description } = req.body;
@@ -541,7 +541,7 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 4. Auction Operations & Lifecycle Management
   // -------------------------------------------------------------
-  app.get('/api/admin/auctions', (req: Request, res: Response) => {
+  app.get('/api/admin/auctions', requireRoles('auction_manager','auctioneer','cataloger','moderator','support'), (req: Request, res: Response) => {
     const { status, province, category } = req.query;
     let list = [...db.auctions];
 
@@ -558,7 +558,7 @@ export async function createApp(serveFrontend = true) {
     res.json(list);
   });
 
-  app.post('/api/admin/auctions', (req: Request, res: Response) => {
+  app.post('/api/admin/auctions', requireRoles('auction_manager','cataloger'), (req: Request, res: Response) => {
     const body = req.body;
     const newLot: AuctionRecord = {
       id: `lot-${Date.now()}`,
@@ -592,7 +592,7 @@ export async function createApp(serveFrontend = true) {
     res.json({ success: true, lot: newLot });
   });
 
-  app.put('/api/admin/auctions/:id/action', (req: Request, res: Response) => {
+  app.put('/api/admin/auctions/:id/action', requireRoles('auction_manager','auctioneer'), (req: Request, res: Response) => {
     const lot = db.auctions.find(a => a.id === req.params.id);
     if (!lot) return res.status(404).json({ error: 'Auction lot not found' });
 
@@ -631,11 +631,11 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 5. KYC & Tazkira Identity Verification Center
   // -------------------------------------------------------------
-  app.get('/api/admin/kyc', (req: Request, res: Response) => {
+  app.get('/api/admin/kyc', requireRoles('kyc'), (req: Request, res: Response) => {
     res.json(db.kycCases);
   });
 
-  app.put('/api/admin/kyc/:id/decision', (req: Request, res: Response) => {
+  app.put('/api/admin/kyc/:id/decision', requireRoles('kyc'), (req: Request, res: Response) => {
     const kyc = db.kycCases.find(k => k.id === req.params.id);
     if (!kyc) return res.status(404).json({ error: 'KYC case not found' });
 
@@ -658,7 +658,7 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 6. Finance & HesabPay Settlement Center
   // -------------------------------------------------------------
-  app.get('/api/admin/finance/summary', (req: Request, res: Response) => {
+  app.get('/api/admin/finance/summary', requireRoles('finance'), (req: Request, res: Response) => {
     const totalHeldEscrow = db.invoices
       .filter(i => i.paymentStatus === 'escrow_locked')
       .reduce((acc, i) => acc + i.totalPayableAFN, 0);
@@ -685,15 +685,15 @@ export async function createApp(serveFrontend = true) {
     });
   });
 
-  app.get('/api/admin/finance/invoices', (req: Request, res: Response) => {
+  app.get('/api/admin/finance/invoices', requireRoles('finance'), (req: Request, res: Response) => {
     res.json(db.invoices);
   });
 
-  app.get('/api/admin/finance/ledger', (req: Request, res: Response) => {
+  app.get('/api/admin/finance/ledger', requireRoles('finance'), (req: Request, res: Response) => {
     res.json(db.ledger);
   });
 
-  app.post('/api/admin/finance/payout', (req: Request, res: Response) => {
+  app.post('/api/admin/finance/payout', requireRoles('finance'), (req: Request, res: Response) => {
     if (process.env.NODE_ENV === 'production') {
       return res.status(501).json({ error: 'Production HesabPay payout execution is disabled until the signed merchant payout API is integrated.' });
     }
@@ -725,7 +725,7 @@ export async function createApp(serveFrontend = true) {
     res.json({ success: true, invoice: inv, ledgerEntry: entry });
   });
 
-  app.post('/api/admin/finance/refund', (req: Request, res: Response) => {
+  app.post('/api/admin/finance/refund', requireRoles('finance'), (req: Request, res: Response) => {
     if (process.env.NODE_ENV === 'production') {
       return res.status(501).json({ error: 'Production HesabPay refund execution is disabled until the signed merchant refund API is integrated.' });
     }
@@ -756,11 +756,11 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 7. Fraud & Security Risk Engine
   // -------------------------------------------------------------
-  app.get('/api/admin/fraud/flags', (req: Request, res: Response) => {
+  app.get('/api/admin/fraud/flags', requireRoles('moderator'), (req: Request, res: Response) => {
     res.json(db.fraudFlags);
   });
 
-  app.put('/api/admin/fraud/flags/:id', (req: Request, res: Response) => {
+  app.put('/api/admin/fraud/flags/:id', requireRoles('moderator'), (req: Request, res: Response) => {
     const flag = db.fraudFlags.find(f => f.id === req.params.id);
     if (!flag) return res.status(404).json({ error: 'Fraud flag not found' });
 
@@ -774,11 +774,11 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 8. Disputes & Mediation Center
   // -------------------------------------------------------------
-  app.get('/api/admin/disputes', (req: Request, res: Response) => {
+  app.get('/api/admin/disputes', requireRoles('support','moderator'), (req: Request, res: Response) => {
     res.json(db.disputes);
   });
 
-  app.post('/api/admin/disputes/:id/message', (req: Request, res: Response) => {
+  app.post('/api/admin/disputes/:id/message', requireRoles('support'), (req: Request, res: Response) => {
     const disp = db.disputes.find(d => d.id === req.params.id);
     if (!disp) return res.status(404).json({ error: 'Dispute not found' });
 
@@ -794,7 +794,7 @@ export async function createApp(serveFrontend = true) {
     res.json({ success: true, dispute: disp });
   });
 
-  app.put('/api/admin/disputes/:id/resolve', (req: Request, res: Response) => {
+  app.put('/api/admin/disputes/:id/resolve', requireRoles('support'), (req: Request, res: Response) => {
     const disp = db.disputes.find(d => d.id === req.params.id);
     if (!disp) return res.status(404).json({ error: 'Dispute not found' });
 
@@ -809,11 +809,11 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 9. Logistics, Pickup & QR Item Release
   // -------------------------------------------------------------
-  app.get('/api/admin/logistics', (req: Request, res: Response) => {
+  app.get('/api/admin/logistics', requireRoles('logistics'), (req: Request, res: Response) => {
     res.json(db.deliveries);
   });
 
-  app.post('/api/admin/logistics/verify-qr', (req: Request, res: Response) => {
+  app.post('/api/admin/logistics/verify-qr', requireRoles('logistics'), (req: Request, res: Response) => {
     const { qrCode, pinCode, staffName } = req.body;
     const item = db.deliveries.find(d => d.qrReleaseCode === qrCode || d.pinCode === pinCode);
     if (!item) {
@@ -831,11 +831,11 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 10. Platform Settings & Global Rules
   // -------------------------------------------------------------
-  app.get('/api/admin/settings', (req: Request, res: Response) => {
+  app.get('/api/admin/settings', requireRoles(), (req: Request, res: Response) => {
     res.json(db.settings);
   });
 
-  app.put('/api/admin/settings', (req: Request, res: Response) => {
+  app.put('/api/admin/settings', requireRoles(), (req: Request, res: Response) => {
     const updates = req.body;
     Object.assign(db.settings, updates);
 
@@ -846,7 +846,7 @@ export async function createApp(serveFrontend = true) {
   // -------------------------------------------------------------
   // 11. Tamper-Evident Immutable Audit Trail
   // -------------------------------------------------------------
-  app.get('/api/admin/audit-logs', (req: Request, res: Response) => {
+  app.get('/api/admin/audit-logs', requireRoles(), (req: Request, res: Response) => {
     res.json(db.auditLogs);
   });
 
