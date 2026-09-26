@@ -26,6 +26,11 @@ create table if not exists users (
   is_bidding_blocked boolean not null default false,
   is_selling_blocked boolean not null default false,
   preferred_language text not null default 'fa' check (preferred_language in ('fa','ps','en')),
+  notification_preferences jsonb not null default '{"emailOutbid":true,"emailClosingSoon":true,"emailPaymentReceipts":true}'::jsonb,
+  terms_version text,
+  terms_accepted_at timestamptz,
+  privacy_version text,
+  privacy_accepted_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   last_login_at timestamptz
@@ -228,5 +233,7 @@ insert into platform_settings(key, value) values
   ('fees.storage_afn', '{"min":50,"max":500,"basis":"daily_or_weekly_by_location"}'::jsonb),
   ('fees.delivery', '{"mode":"separate"}'::jsonb),
   ('fees.appraisal', '{"mode":"specialist_quote"}'::jsonb),
-  ('fees.payment_processing', '{"mode":"provider_actual_or_included"}'::jsonb)
+  ('fees.payment_processing', '{"mode":"provider_actual_or_included"}'::jsonb),
+  ('legal.terms_version', '"2026-09-26-v1"'::jsonb),
+  ('legal.privacy_version', '"2026-09-26-v1"'::jsonb)
 on conflict (key) do update set value = excluded.value, updated_at = now();
