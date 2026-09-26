@@ -359,6 +359,7 @@ export default function App() {
                 }}
                 onLogout={handleLogout}
                 currentLang={currentLang}
+                currentUser={currentUser!}
               />
               ) : (
                 <LoginPage currentLang={currentLang} onAuthenticated={handleAuthenticated} onViewPolicies={() => setActiveTab('fees')} />
