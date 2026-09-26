@@ -18,6 +18,7 @@ import { EbthBrowseCatalog } from './components/EbthBrowseCatalog';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { UserProfileModal } from './components/UserProfileModal';
+import { adminAuth } from './services/adminApi';
 import { ShieldCheck, CheckCircle2, Clock, X } from 'lucide-react';
 
 export default function App() {
@@ -36,7 +37,7 @@ export default function App() {
   const [bidModalLot, setBidModalLot] = useState<AuctionLot | null>(null);
   const [isSubmitLotOpen, setIsSubmitLotOpen] = useState(false);
   const [consultationModalOpen, setConsultationModalOpen] = useState(false);
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => adminAuth.hasSession());
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
 
@@ -47,6 +48,19 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dir = currentLang === 'en' ? 'ltr' : 'rtl';
     document.documentElement.lang = currentLang;
+  }, [currentLang]);
+
+  useEffect(() => {
+    const handleExpired = () => {
+      setIsAdminLoggedIn(false);
+      setActiveTab('home');
+      setToastMessage({
+        title: currentLang === 'en' ? 'Admin session expired' : 'نشست مدیریت پایان یافت',
+        subtitle: currentLang === 'en' ? 'Please sign in again.' : 'برای ادامه دوباره وارد حساب مدیریت شوید.',
+      });
+    };
+    window.addEventListener('nawbat-admin-session-expired', handleExpired);
+    return () => window.removeEventListener('nawbat-admin-session-expired', handleExpired);
   }, [currentLang]);
 
   // Handle Search Submission
@@ -261,6 +275,7 @@ export default function App() {
                   });
                 }}
                 onLogout={() => {
+                  adminAuth.clearToken();
                   setIsAdminLoggedIn(false);
                   setActiveTab('home');
                   setToastMessage({
