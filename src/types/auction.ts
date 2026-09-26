@@ -55,4 +55,4 @@ export interface AuctionLot {
 
 export type Language = 'fa' | 'ps' | 'en';
 export type ViewMode = 'web' | 'mobile_app';
-export type ActiveTab = 'home' | 'browse' | 'closing' | 'categories' | 'my-bids' | 'watchlist' | 'corporate' | 'admin';
+export type ActiveTab = 'home' | 'browse' | 'closing' | 'categories' | 'my-bids' | 'watchlist' | 'corporate' | 'login' | 'fees' | 'account' | 'admin';
