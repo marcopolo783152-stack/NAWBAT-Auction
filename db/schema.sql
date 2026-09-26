@@ -36,6 +36,15 @@ create table if not exists users (
   last_login_at timestamptz
 );
 
+-- Safe upgrades for databases created by earlier NAWBAT builds
+alter table users add column if not exists notification_preferences jsonb not null default '{"emailOutbid":true,"emailClosingSoon":true,"emailPaymentReceipts":true}'::jsonb;
+alter table users add column if not exists terms_version text;
+alter table users add column if not exists terms_accepted_at timestamptz;
+alter table users add column if not exists privacy_version text;
+alter table users add column if not exists privacy_accepted_at timestamptz;
+alter table users drop constraint if exists users_user_type_check;
+alter table users add constraint users_user_type_check check (user_type in ('buyer','customer','seller','business','staff'));
+
 create table if not exists user_roles (
   user_id uuid not null references users(id) on delete cascade,
   role_id uuid not null references roles(id) on delete cascade,
