@@ -1,12 +1,16 @@
 import express, { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { db, UserRecord, AuctionRecord } from './src/server/database';
-import { issueAdminToken, requireAdmin, verifyAdminCredentials } from './src/server/auth';
+import { issueAdminToken, issueSessionToken, requireAdmin, requireSession, verifyAdminCredentials } from './src/server/auth';
 import { createPersistentUser, getPersistentUser, hasPersistentDatabase, listPersistentUsers, updatePersistentUser } from './src/server/userRepository';
+import { findAuthUserByEmail, markLogin, registerPublicUser, safeAuthUser } from './src/server/authRepository';
+import { NAWBAT_FEES, quoteFees } from './src/server/fees';
+import { getPool } from './src/server/postgres';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -50,6 +54,155 @@ export async function createApp(serveFrontend = true) {
       environment: process.env.NODE_ENV || 'development',
       timestamp: new Date().toISOString(),
     });
+  });
+
+  // -------------------------------------------------------------
+  // Public fee schedule
+  // -------------------------------------------------------------
+  app.get('/api/fees', (req: Request, res: Response) => {
+    const sale = Number(req.query.salePriceAFN);
+    const reserve = req.query.reserveAFN !== undefined ? Number(req.query.reserveAFN) : undefined;
+    const negotiated = req.query.negotiatedSellerPct !== undefined ? Number(req.query.negotiatedSellerPct) : undefined;
+
+    if (Number.isFinite(sale) && sale >= 0) {
+      try {
+        return res.json({ fees: NAWBAT_FEES, quote: quoteFees(sale, { reserveAFN: reserve, negotiatedSellerPct: negotiated }) });
+      } catch (error: any) {
+        return res.status(400).json({ error: error?.message || 'Could not calculate fees.' });
+      }
+    }
+
+    return res.json({ fees: NAWBAT_FEES });
+  });
+
+  // -------------------------------------------------------------
+  // Unified account authentication
+  // -------------------------------------------------------------
+  app.post('/api/auth/register', adminLoginLimiter, async (req: Request, res: Response) => {
+    if (!hasPersistentDatabase()) {
+      return res.status(503).json({ error: 'Account database is not configured yet.' });
+    }
+
+    const { fullName, email, password, accountType, preferredLanguage, acceptTerms, acceptPrivacy } = req.body || {};
+    const allowedAccountTypes = new Set(['buyer', 'customer', 'seller', 'business']);
+
+    if (typeof fullName !== 'string' || fullName.trim().length < 2) {
+      return res.status(400).json({ error: 'Full name is required.' });
+    }
+    if (typeof email !== 'string' || !/^\S+@\S+\.\S+$/.test(email.trim())) {
+      return res.status(400).json({ error: 'A valid email address is required.' });
+    }
+    if (typeof password !== 'string' || password.length < 10) {
+      return res.status(400).json({ error: 'Password must be at least 10 characters.' });
+    }
+    if (!allowedAccountTypes.has(accountType)) {
+      return res.status(400).json({ error: 'Choose buyer, customer, seller, or business.' });
+    }
+    if (acceptTerms !== true || acceptPrivacy !== true) {
+      return res.status(400).json({ error: 'Terms of Use and Privacy Policy must be accepted.' });
+    }
+
+    try {
+      const user = await registerPublicUser({
+        fullName,
+        email,
+        password,
+        accountType,
+        preferredLanguage: ['fa', 'ps', 'en'].includes(preferredLanguage) ? preferredLanguage : 'fa',
+        termsVersion: '2026-09-26-v1',
+        privacyVersion: '2026-09-26-v1',
+      });
+
+      const token = issueSessionToken({
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+        userType: user.userType,
+      });
+
+      return res.status(201).json({ success: true, token, user });
+    } catch (error: any) {
+      const duplicate = error?.code === '23505';
+      return res.status(duplicate ? 409 : 500).json({
+        error: duplicate ? 'An account with this email already exists.' : 'Could not create the account.',
+      });
+    }
+  });
+
+  app.post('/api/auth/login', adminLoginLimiter, async (req: Request, res: Response) => {
+    const { email, password } = req.body || {};
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Email and password are required.' });
+    }
+
+    // Environment-backed owner account is recognized by the same login page.
+    const owner = await verifyAdminCredentials(email, password);
+    if (owner.ok) {
+      return res.json({
+        success: true,
+        token: issueAdminToken(owner.email),
+        user: {
+          id: 'usr-admin-1',
+          email: owner.email,
+          fullName: 'NAWBAT Administrator',
+          userType: 'staff',
+          role: 'superadmin',
+          roleName: 'Super Admin',
+          permissions: ['*'],
+          status: 'active',
+          kycStatus: 'verified',
+        },
+      });
+    }
+
+    if (!hasPersistentDatabase()) {
+      return res.status(503).json({ error: 'Account database is not configured yet.' });
+    }
+
+    const row = await findAuthUserByEmail(email);
+    if (!row?.password_hash) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    const matches = await bcrypt.compare(password, row.password_hash);
+    if (!matches) return res.status(401).json({ error: 'Invalid email or password.' });
+    if (row.status === 'blocked' || row.status === 'suspended') {
+      return res.status(403).json({ error: 'This account is not currently allowed to sign in.' });
+    }
+
+    const user = safeAuthUser(row);
+    await markLogin(user.id);
+    const token = issueSessionToken({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      userType: user.userType,
+      permissions: user.permissions,
+    });
+
+    return res.json({ success: true, token, user });
+  });
+
+  app.get('/api/auth/me', requireSession, async (req: Request, res: Response) => {
+    const session = (req as Request & { session?: any }).session;
+    if (session?.sub === 'usr-admin-1') {
+      return res.json({
+        id: 'usr-admin-1',
+        email: session.email,
+        fullName: 'NAWBAT Administrator',
+        userType: 'staff',
+        role: 'superadmin',
+        roleName: 'Super Admin',
+        permissions: ['*'],
+        status: 'active',
+        kycStatus: 'verified',
+      });
+    }
+    if (!hasPersistentDatabase()) return res.status(503).json({ error: 'Account database is unavailable.' });
+
+    const row = await findAuthUserByEmail(session.email);
+    if (!row) return res.status(404).json({ error: 'Account not found.' });
+    return res.json(safeAuthUser(row));
   });
 
   // -------------------------------------------------------------
@@ -98,22 +251,68 @@ export async function createApp(serveFrontend = true) {
   app.use('/api/admin', requireAdmin);
 
   // -------------------------------------------------------------
-  // User account APIs
+  // Authenticated user account APIs
   // -------------------------------------------------------------
-  // Public buyer/seller authentication is intentionally disabled until
-  // a signed user-session flow is connected to persistent users.
-  app.get('/api/user/profile', (_req: Request, res: Response) => {
-    return res.status(501).json({
-      error: 'User authentication is not enabled yet.',
-      code: 'USER_AUTH_PENDING',
+  app.get('/api/user/profile', requireSession, async (req: Request, res: Response) => {
+    const session = (req as Request & { session?: any }).session;
+    if (session?.sub === 'usr-admin-1') {
+      return res.json({
+        id: 'usr-admin-1',
+        fullName: 'NAWBAT Administrator',
+        email: session.email,
+        userType: 'staff',
+        role: 'superadmin',
+        kycStatus: 'verified',
+        balanceAFN: 0,
+        escrowLockedAFN: 0,
+        notificationPreferences: {},
+      });
+    }
+
+    if (!hasPersistentDatabase()) return res.status(503).json({ error: 'Account database is unavailable.' });
+    const user = await getPersistentUser(session.sub);
+    if (!user) return res.status(404).json({ error: 'Account not found.' });
+
+    const prefResult = await getPool().query(
+      'select notification_preferences from users where id = $1 limit 1',
+      [session.sub],
+    );
+
+    return res.json({
+      ...user,
+      notificationPreferences: prefResult.rows[0]?.notification_preferences || {},
     });
   });
 
-  app.put('/api/user/notification-preferences', (_req: Request, res: Response) => {
-    return res.status(501).json({
-      error: 'User authentication is not enabled yet.',
-      code: 'USER_AUTH_PENDING',
-    });
+  app.put('/api/user/notification-preferences', requireSession, async (req: Request, res: Response) => {
+    const session = (req as Request & { session?: any }).session;
+    if (session?.sub === 'usr-admin-1') {
+      return res.status(400).json({ error: 'Owner notification preferences are managed separately.' });
+    }
+    if (!hasPersistentDatabase()) return res.status(503).json({ error: 'Account database is unavailable.' });
+
+    const current = await getPool().query(
+      'select notification_preferences from users where id = $1 limit 1',
+      [session.sub],
+    );
+    if (!current.rows[0]) return res.status(404).json({ error: 'Account not found.' });
+
+    const existing = current.rows[0].notification_preferences || {};
+    const next = {
+      ...existing,
+      emailOutbid: Boolean(req.body?.emailOutbid),
+      emailClosingSoon: Boolean(req.body?.emailClosingSoon),
+      emailPaymentReceipts: req.body?.emailHesabPayReceipts !== undefined
+        ? Boolean(req.body.emailHesabPayReceipts)
+        : Boolean(existing.emailPaymentReceipts),
+    };
+
+    await getPool().query(
+      'update users set notification_preferences = $1::jsonb, updated_at = now() where id = $2',
+      [JSON.stringify(next), session.sub],
+    );
+
+    return res.json({ success: true, notificationPreferences: next });
   });
 
   // -------------------------------------------------------------
