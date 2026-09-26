@@ -75,6 +75,9 @@ export const authApi = {
     preferredLanguage: 'fa' | 'ps' | 'en';
     acceptTerms: boolean;
     acceptPrivacy: boolean;
+    acceptFeesRules: boolean;
+    agreementReviewed: boolean;
+    signatureName: string;
   }) {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
