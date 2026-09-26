@@ -2,10 +2,12 @@ import bcrypt from 'bcryptjs';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { NextFunction, Request, Response } from 'express';
 
-export interface AdminClaims extends JwtPayload {
+export interface SessionClaims extends JwtPayload {
   sub: string;
   email: string;
   role: string;
+  userType: string;
+  permissions?: string[];
 }
 
 function jwtSecret(): string {
@@ -35,26 +37,91 @@ export async function verifyAdminCredentials(email: string, password: string) {
 }
 
 export function issueAdminToken(email: string): string {
+  return issueSessionToken({
+    sub: 'usr-admin-1',
+    email,
+    role: 'superadmin',
+    userType: 'staff',
+    permissions: ['*'],
+  });
+}
+
+export function issueSessionToken(input: {
+  sub: string;
+  email: string;
+  role: string;
+  userType: string;
+  permissions?: string[];
+}): string {
   return jwt.sign(
-    { email, role: 'SuperAdmin' },
+    {
+      email: input.email,
+      role: input.role,
+      userType: input.userType,
+      permissions: input.permissions || [],
+    },
     jwtSecret(),
-    { subject: 'usr-admin-1', expiresIn: '8h', issuer: 'nawbat.af', audience: 'nawbat-admin' },
+    {
+      subject: input.sub,
+      expiresIn: '8h',
+      issuer: 'nawbat.af',
+      audience: 'nawbat-session',
+    },
   );
 }
 
-export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+export function verifySessionToken(token: string): SessionClaims {
+  return jwt.verify(token, jwtSecret(), {
+    issuer: 'nawbat.af',
+    audience: 'nawbat-session',
+  }) as SessionClaims;
+}
+
+function bearer(req: Request) {
   const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Authentication required.' });
-  }
+  return header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : null;
+}
+
+export function requireSession(req: Request, res: Response, next: NextFunction) {
+  const token = bearer(req);
+  if (!token) return res.status(401).json({ error: 'Authentication required.' });
 
   try {
-    const token = header.slice('Bearer '.length);
-    const claims = jwt.verify(token, jwtSecret(), {
-      issuer: 'nawbat.af',
-      audience: 'nawbat-admin',
-    }) as AdminClaims;
-    (req as Request & { admin?: AdminClaims }).admin = claims;
+    const claims = verifySessionToken(token);
+    (req as Request & { session?: SessionClaims }).session = claims;
+    return next();
+  } catch {
+    return res.status(401).json({ error: 'Session expired or invalid.' });
+  }
+}
+
+export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  const token = bearer(req);
+  if (!token) return res.status(401).json({ error: 'Authentication required.' });
+
+  try {
+    const claims = verifySessionToken(token);
+    const allowedRoles = new Set([
+      'superadmin',
+      'admin',
+      'auction_manager',
+      'auctioneer',
+      'cataloger',
+      'finance',
+      'kyc',
+      'support',
+      'logistics',
+      'moderator',
+    ]);
+
+    if (claims.userType !== 'staff' && !allowedRoles.has(claims.role)) {
+      return res.status(403).json({ error: 'Staff access required.' });
+    }
+    if (!allowedRoles.has(claims.role)) {
+      return res.status(403).json({ error: 'This staff role does not have admin-console access.' });
+    }
+
+    (req as Request & { admin?: SessionClaims }).admin = claims;
     return next();
   } catch {
     return res.status(401).json({ error: 'Session expired or invalid.' });
