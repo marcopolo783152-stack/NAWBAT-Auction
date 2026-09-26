@@ -189,7 +189,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ currentLang, onAuthenticat
                 <span className="text-xs font-bold text-[#263a34]">{copy.name}</span>
                 <div className="mt-1.5 flex items-center gap-2 bg-[#fbfdfc] border border-[#cbd8d2] rounded-xl px-3">
                   <UserRound className="w-4 h-4 text-[#60706a]" />
-                  <input required minLength={2} value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full py-3 bg-transparent outline-none text-sm" />
+                  <input required minLength={2} value={fullName} onChange={(e) => { setFullName(e.target.value); if (agreementReviewed) { setAgreementReviewed(false); setAcceptTerms(false); setAcceptPrivacy(false); setAcceptFeesRules(false); setSignatureName(''); } }} className="w-full py-3 bg-transparent outline-none text-sm" />
                 </div>
               </label>
             )}
@@ -273,7 +273,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ currentLang, onAuthenticat
 
             <button
               type="submit"
-              disabled={busy || (mode === 'register' && (!agreementReviewed || !acceptTerms || !acceptPrivacy || !acceptFeesRules))}
+              disabled={busy || (mode === 'register' && (!agreementReviewed || !acceptTerms || !acceptPrivacy || !acceptFeesRules || signatureName.trim().toLocaleLowerCase() !== fullName.trim().toLocaleLowerCase()))}
               className="w-full bg-[#003a2f] hover:bg-[#0b5345] disabled:opacity-60 text-white rounded-xl py-3.5 font-bold text-sm flex items-center justify-center gap-2 shadow-md"
             >
               {busy ? <span className="w-5 h-5 rounded-full border-2 border-white/40 border-t-white animate-spin" /> : (
