@@ -2,7 +2,6 @@ import express, { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
-import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { db, UserRecord, AuctionRecord } from './src/server/database';
@@ -924,6 +923,7 @@ export async function createApp(serveFrontend = true) {
         res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
       });
     } else {
+      const { createServer: createViteServer } = await import('vite');
       const vite = await createViteServer({
         server: { middlewareMode: true, hmr: false },
         appType: 'spa',

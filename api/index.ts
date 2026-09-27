@@ -1,7 +1,12 @@
 import type { Request, Response } from 'express';
 import { createApp } from '../server';
 
-const appPromise = createApp(false);
+let appPromise: ReturnType<typeof createApp> | null = null;
+
+function getApp() {
+  if (!appPromise) appPromise = createApp(false);
+  return appPromise;
+}
 
 function normalizeForwardedPath(req: Request) {
   const raw = req.query?.path;
@@ -22,11 +27,20 @@ function normalizeForwardedPath(req: Request) {
 }
 
 export default async function handler(req: Request, res: Response) {
-  const app = await appPromise;
+  try {
+    const app = await getApp();
 
-  // Vercel rewrites /api/* to this single serverless function.
-  // Restore the original API path so Express route matching stays authoritative.
-  req.url = normalizeForwardedPath(req);
+    // Vercel rewrites /api/* to this single serverless function.
+    // Restore the original API path so Express route matching stays authoritative.
+    req.url = normalizeForwardedPath(req);
 
-  return app(req, res);
+    return app(req, res);
+  } catch (error: any) {
+    console.error('NAWBAT API initialization failed', error);
+    return res.status(500).json({
+      error: 'NAWBAT API initialization failed.',
+      code: 'API_INITIALIZATION_FAILED',
+      requestId: req.headers['x-vercel-id'] || null,
+    });
+  }
 }
