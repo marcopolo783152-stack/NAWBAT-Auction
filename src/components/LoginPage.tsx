@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Language } from '../types/auction';
 import { authApi, NawbatUser } from '../services/authApi';
-import { LockKeyhole, Mail, UserRound, Store, ShoppingBag, Building2, ShieldCheck, ArrowRight, ArrowLeft, CheckCircle2, FileSignature } from 'lucide-react';
+import { LockKeyhole, Mail, UserRound, Store, ShoppingBag, Building2, ShieldCheck, ArrowRight, ArrowLeft, CheckCircle2, FileSignature, Eye, EyeOff } from 'lucide-react';
 import { RegistrationAgreementModal } from './RegistrationAgreementModal';
 
 type Mode = 'login' | 'register';
@@ -18,6 +18,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ currentLang, onAuthenticat
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [accountType, setAccountType] = useState<'buyer' | 'customer' | 'seller' | 'business'>('buyer');
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptPrivacy, setAcceptPrivacy] = useState(false);
@@ -206,7 +207,24 @@ export const LoginPage: React.FC<LoginPageProps> = ({ currentLang, onAuthenticat
               <span className="text-xs font-bold text-[#263a34]">{copy.password}</span>
               <div className="mt-1.5 flex items-center gap-2 bg-[#fbfdfc] border border-[#cbd8d2] rounded-xl px-3">
                 <LockKeyhole className="w-4 h-4 text-[#60706a]" />
-                <input type="password" required minLength={mode === 'register' ? 10 : undefined} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full py-3 bg-transparent outline-none text-sm direction-ltr" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  minLength={mode === 'register' ? 10 : undefined}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full py-3 bg-transparent outline-none text-sm direction-ltr"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((value) => !value)}
+                  className="p-1.5 rounded-lg text-[#60706a] hover:text-[#003a2f] hover:bg-[#edf5f1] transition-colors"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </label>
 
