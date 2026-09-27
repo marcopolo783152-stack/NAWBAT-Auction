@@ -116,6 +116,10 @@ export const LotDetailModal: React.FC<LotDetailModalProps> = ({
     return Math.max(0, lot.currentBidAFN - lot.startingPriceAFN);
   }, [lot]);
 
+  const nextMinimumBidAFN = lot.currentBidAFN + lot.minIncrementAFN;
+  const estimatedBuyerPremiumAFN = Math.round(nextMinimumBidAFN * 0.05);
+  const estimatedWinningTotalAFN = nextMinimumBidAFN + estimatedBuyerPremiumAFN;
+
   // Custom English tooltip for Recharts Line Chart
   const CustomChartTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -224,8 +228,19 @@ export const LotDetailModal: React.FC<LotDetailModalProps> = ({
                   <div>
                     <strong className="text-[#111d27]">موقعیت بازرسی حضوری:</strong> {lot.locationDetails}
                   </div>
-                  <div>
-                    <strong className="text-[#111d27]">فروشنده معتبر:</strong> {lot.sellerName} (تایید هویت شده با تذکره الکترونیکی)
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <strong className="text-[#111d27]">فروشنده:</strong>
+                    <span>{lot.sellerName}</span>
+                    {lot.sellerVerified ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0b5345] bg-[#afefdc]/45 px-2 py-0.5 rounded-full">
+                        <CheckCircle2 className="w-3 h-3" />
+                        حساب فروشنده تایید شده
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-[#735c00] bg-[#fff0c2] px-2 py-0.5 rounded-full">
+                        تایید فروشنده در انتظار تکمیل
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -315,6 +330,26 @@ export const LotDetailModal: React.FC<LotDetailModalProps> = ({
                   <span>{t.bidNow} (+{lot.minIncrementAFN.toLocaleString('en-US')} AFN)</span>
                 </button>
 
+                <div className="rounded-xl border border-[#003a2f]/12 bg-white p-3 text-[11px]">
+                  <div className="flex items-center justify-between gap-3 py-1">
+                    <span className="text-[#66736e]">{currentLang === 'en' ? 'Minimum next bid' : 'حداقل پیشنهاد بعدی'}</span>
+                    <strong className="font-mono text-[#111d27]">{nextMinimumBidAFN.toLocaleString('en-US')} AFN</strong>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 py-1">
+                    <span className="text-[#66736e]">{currentLang === 'en' ? 'Buyer premium (5%)' : 'حق‌العمل خریدار (۵٪)'}</span>
+                    <strong className="font-mono text-[#111d27]">{estimatedBuyerPremiumAFN.toLocaleString('en-US')} AFN</strong>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 pt-2 mt-1 border-t border-[#003a2f]/10">
+                    <span className="font-bold text-[#17362d]">{currentLang === 'en' ? 'Estimated total if this bid wins' : 'جمع تقریبی در صورت برنده‌شدن'}</span>
+                    <strong className="font-mono text-sm text-[#003a2f]">{estimatedWinningTotalAFN.toLocaleString('en-US')} AFN</strong>
+                  </div>
+                  <p className="mt-2 text-[10px] leading-relaxed text-[#707975]">
+                    {currentLang === 'en'
+                      ? 'Delivery and any clearly disclosed payment-provider charge are separate.'
+                      : 'هزینه تحویل و هر هزینه پردازش پرداخت که به‌صورت واضح اعلام شود جداگانه محاسبه می‌گردد.'}
+                  </p>
+                </div>
+
                 {/* Easy Quick-Bid Buttons (For people without mental math hassle) */}
                 <div className="pt-2 border-t border-[#326286]/15 flex flex-col gap-1.5">
                   <span className="text-[10px] text-[#326286] font-semibold flex items-center gap-1">
@@ -344,14 +379,16 @@ export const LotDetailModal: React.FC<LotDetailModalProps> = ({
                 </div>
               </div>
 
-              {/* HesabPay Escrow Security Box */}
-              <div className="p-3 bg-[#afefdc]/30 rounded-xl border border-[#065043]/20 flex flex-col gap-1.5 text-xs text-[#065043]">
+              {/* Payment readiness / buyer protection disclosure */}
+              <div className="p-3 bg-[#f1f7f5] rounded-xl border border-[#065043]/15 flex flex-col gap-1.5 text-xs text-[#065043]">
                 <div className="flex items-center gap-1.5 font-bold">
                   <ShieldCheck className="w-4 h-4 text-[#003a2f]" />
-                  <span>پروتکل تضمین امانی HesabPay</span>
+                  <span>{currentLang === 'en' ? 'Payment & buyer-protection status' : 'وضعیت پرداخت و محافظت خریدار'}</span>
                 </div>
                 <p className="text-[11px] leading-relaxed">
-                  مبلغ معامله تا زمان تایید فیزیکی کالا و تحویل مدارک در حساب امانی محفوظ خواهد بود. تحویل کالا با اسکن کد QR اختصاصی در گدام انجام می‌شود.
+                  {currentLang === 'en'
+                    ? 'HesabPay production payments are not marked active until the real merchant credentials, provider confirmation, and server-side verification are connected. The checkout will show the exact protection and release terms before payment.'
+                    : 'پرداخت تولیدی HesabPay تا زمانی که حساب تجارتی واقعی، تایید ارائه‌دهنده و بررسی سروری متصل نشود فعال اعلام نمی‌گردد. شرایط دقیق محافظت و آزادسازی وجه پیش از پرداخت در صفحه تسویه نمایش داده خواهد شد.'}
                 </p>
               </div>
 
@@ -612,7 +649,7 @@ export const LotDetailModal: React.FC<LotDetailModalProps> = ({
                   مجموع نقاط داده: <strong className="font-mono text-[#111d27]">{chartData.length}</strong> رویداد پیشنهاد
                 </span>
                 <span className="font-mono text-[#003a2f]">
-                  آخرین به‌روزرسانی: لحظه‌ای (Live HesabPay Ledger Feed)
+                  آخرین به‌روزرسانی: براساس آخرین داده ثبت‌شده مزایده
                 </span>
               </div>
             </div>
@@ -632,14 +669,14 @@ export const LotDetailModal: React.FC<LotDetailModalProps> = ({
                       </span>
                     </h4>
                     <p className="text-[11px] text-[#707975]">
-                      شفافیت 100%: بررسی 5 پیشنهاددهنده اخیر به همراه زمان ثبت، مبلغ دقیق و وضعیت رقابت
+                      ۵ پیشنهاد اخیر همراه با زمان ثبت، مبلغ و وضعیت رقابت
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 self-start sm:self-auto">
                   <span className="text-[11px] text-[#065043] bg-[#afefdc] px-2.5 py-0.5 rounded-md font-bold font-mono">
-                    Verified Bidders ✓
+                    Recent Bids
                   </span>
                 </div>
               </div>
@@ -705,9 +742,8 @@ export const LotDetailModal: React.FC<LotDetailModalProps> = ({
                                   <span className="font-mono text-[10px] text-[#326286] font-semibold bg-[#ecf4ff] px-1.5 py-0.2 rounded">
                                     {bid.bidderMaskedId}
                                   </span>
-                                  <span className="text-[10px] text-[#0b5345] flex items-center gap-0.5 font-medium">
-                                    <CheckCircle2 className="w-2.5 h-2.5 text-[#003a2f]" />
-                                    تایید تذکره
+                                  <span className="text-[10px] text-[#66736e] flex items-center gap-0.5 font-medium">
+                                    شناسه پیشنهاددهنده برای حفظ حریم خصوصی پنهان شده
                                   </span>
                                 </div>
                               </div>
@@ -773,7 +809,7 @@ export const LotDetailModal: React.FC<LotDetailModalProps> = ({
                       <strong>چگونه پیشنهاد دهیم؟</strong> کافیست روی دکمه ثبت پیشنهاد کلیک کنید یا یکی از مبالغ آماده را انتخاب نمایید (حداقل گام: +{lot.minIncrementAFN.toLocaleString('en-US')} AFN).
                     </li>
                     <li>
-                      <strong>امنیت کامل وجه:</strong> پول شما تا زمان رویت فیزیکی کالا و رضایت در حساب امانی HesabPay محافظت می‌شود.
+                      <strong>پرداخت:</strong> شرایط نهایی پرداخت، محافظت خریدار و تحویل قبل از پرداخت به‌صورت واضح نمایش داده می‌شود.
                     </li>
                   </ul>
                 </div>
