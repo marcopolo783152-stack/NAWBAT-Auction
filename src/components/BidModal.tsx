@@ -16,7 +16,7 @@ interface BidModalProps {
   lot: AuctionLot | null;
   isOpen: boolean;
   onClose: () => void;
-  onSubmitBid: (lotId: string, amountAFN: number, isProxy: boolean, maxProxyAFN?: number) => void;
+  onSubmitBid: (lotId: string, amountAFN: number, isProxy: boolean, maxProxyAFN?: number) => Promise<{ antiSnipingExtended?: boolean } | void>;
   currentLang: Language;
 }
 
@@ -37,6 +37,7 @@ export const BidModal: React.FC<BidModalProps> = ({
   const [maxProxyAmount, setMaxProxyAmount] = useState<number>(minValidBid + lot.minIncrementAFN * 3);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   // Display-only deposit estimate. No funds are locked until a verified payment integration confirms it.
   const escrowDeposit = Math.round(bidAmount * 0.05);
@@ -45,20 +46,23 @@ export const BidModal: React.FC<BidModalProps> = ({
     setBidAmount((prev) => prev + extra);
   };
 
-  const handleConfirm = () => {
-    if (bidAmount < minValidBid) return;
+  const handleConfirm = async () => {
+    if (bidAmount < minValidBid || isProcessing) return;
+    setErrorMessage('');
     setIsProcessing(true);
 
-    // Local preview only. Server-authoritative bidding/payment integration must confirm before production settlement.
-    setTimeout(() => {
-      onSubmitBid(lot.id, bidAmount, isProxy, isProxy ? maxProxyAmount : undefined);
-      setIsProcessing(false);
+    try {
+      await onSubmitBid(lot.id, bidAmount, isProxy, isProxy ? maxProxyAmount : undefined);
       setIsSuccess(true);
       setTimeout(() => {
         setIsSuccess(false);
         onClose();
       }, 1400);
-    }, 900);
+    } catch (error: any) {
+      setErrorMessage(error?.message || (currentLang === 'en' ? 'Could not place the bid.' : 'پیشنهاد ثبت نشد.'));
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -94,7 +98,7 @@ export const BidModal: React.FC<BidModalProps> = ({
             </div>
             <h4 className="font-serif text-lg font-bold text-[#003a2f]">پیشنهاد شما با موفقیت ثبت گردید!</h4>
             <p className="text-xs text-[#3f4945] max-w-xs">
-              پیشنهاد شما در نسخه نمایشی ثبت شد. هیچ وجهی در HesabPay قفل نشده است تا اتصال رسمی پرداخت فعال گردد.
+              {currentLang === 'en' ? 'Your bid was accepted by the NAWBAT server and recorded in the bidding database.' : 'پیشنهاد شما توسط سرور نوبت تایید و در پایگاه داده مزایده ثبت شد.'}
             </p>
           </div>
         ) : (
@@ -215,6 +219,12 @@ export const BidModal: React.FC<BidModalProps> = ({
               </div>
             </div>
 
+            {errorMessage && (
+              <div className="rounded-xl border border-[#ba1a1a]/20 bg-[#fff2f1] px-3.5 py-3 text-xs text-[#9b1c1c]">
+                {errorMessage}
+              </div>
+            )}
+
             {/* Submit Action */}
             <button
               onClick={handleConfirm}
@@ -224,7 +234,7 @@ export const BidModal: React.FC<BidModalProps> = ({
               {isProcessing ? (
                 <span className="flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  در حال ثبت پیشنهاد آزمایشی...
+                  {currentLang === 'en' ? 'Submitting secure bid...' : 'در حال ثبت امن پیشنهاد...'}
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
