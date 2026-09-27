@@ -1,10 +1,10 @@
 import React from 'react';
 import { Logo } from './Logo';
-import { CategoryId, Language, Province, ViewMode, ActiveTab } from '../types/auction';
+import { CategoryId, Language, Province, ActiveTab } from '../types/auction';
 import { translations } from '../translations';
 import { NawbatUser } from '../services/authApi';
 import {
-  Search, MapPin, PlusCircle, ShieldCheck, User, Smartphone, Monitor,
+  Search, MapPin, PlusCircle, ShieldCheck, User,
   Bookmark, Gavel, Menu, X, LogIn, LogOut, FileText
 } from 'lucide-react';
 
@@ -19,8 +19,6 @@ interface HeaderProps {
   onSearchChange: (q: string) => void;
   onSearchSubmit: () => void;
   onOpenSubmitLot: () => void;
-  viewMode: ViewMode;
-  onToggleViewMode: () => void;
   activeTab: ActiveTab;
   onTabChange: (tab: ActiveTab) => void;
   myBidsCount: number;
@@ -33,7 +31,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   currentLang, onLanguageChange, selectedProvince, onProvinceChange,
   selectedCategory, onCategoryChange, searchQuery, onSearchChange,
-  onSearchSubmit, onOpenSubmitLot, viewMode, onToggleViewMode,
+  onSearchSubmit, onOpenSubmitLot,
   activeTab, onTabChange, myBidsCount, watchlistCount, currentUser,
   onOpenProfile, onLogout,
 }) => {
@@ -127,10 +125,6 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <button onClick={onToggleViewMode} className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-[#326286]/20 text-[#326286] bg-[#ecf4ff]">
-              {viewMode === 'mobile_app' ? <Monitor className="w-3.5 h-3.5" /> : <Smartphone className="w-3.5 h-3.5" />}
-            </button>
-
             <button onClick={onOpenSubmitLot} className="hidden sm:inline-flex items-center gap-1.5 bg-[#c9953f] hover:bg-[#b48635] text-[#1d1508] px-4 py-2 rounded-lg text-xs font-black shadow-sm">
               <PlusCircle className="w-3.5 h-3.5" /><span>{t.sellItem}</span>
             </button>
