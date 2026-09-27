@@ -16,6 +16,20 @@ export type NawbatUser = {
 const TOKEN_KEY = 'nawbat_session_token';
 const USER_KEY = 'nawbat_session_user';
 
+async function readApiResponse(res: Response) {
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const text = await res.text().catch(() => '');
+    const preview = text.slice(0, 80).replace(/\s+/g, ' ');
+    throw new Error(
+      `NAWBAT API returned an invalid response (${res.status}). ` +
+      `Please check the Vercel API deployment and environment variables.` +
+      (preview ? ` Response started with: ${preview}` : '')
+    );
+  }
+  return res.json();
+}
+
 function readUser(): NawbatUser | null {
   try {
     const raw = sessionStorage.getItem(USER_KEY);
@@ -61,7 +75,7 @@ export const authApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-    const data = await res.json();
+    const data = await readApiResponse(res);
     if (!res.ok) throw new Error(data?.error || 'Could not sign in.');
     this.saveSession(data.token, data.user);
     return data.user as NawbatUser;
@@ -84,7 +98,7 @@ export const authApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
     });
-    const data = await res.json();
+    const data = await readApiResponse(res);
     if (!res.ok) throw new Error(data?.error || 'Could not create account.');
     this.saveSession(data.token, data.user);
     return data.user as NawbatUser;
@@ -100,7 +114,7 @@ export const authApi = {
       this.clearSession();
       return null;
     }
-    const user = await res.json();
+    const user = await readApiResponse(res);
     sessionStorage.setItem(USER_KEY, JSON.stringify(user));
     return user as NawbatUser;
   },
