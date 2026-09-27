@@ -303,8 +303,6 @@ export default function App() {
             onSearchChange={setSearchQuery}
             onSearchSubmit={handleSearchSubmit}
             onOpenSubmitLot={handleOpenSubmitLot}
-            viewMode={viewMode}
-            onToggleViewMode={() => setViewMode(viewMode === 'web' ? 'mobile_app' : 'web')}
             activeTab={activeTab}
             onTabChange={setActiveTab}
             myBidsCount={myBiddedLotIds.length}
