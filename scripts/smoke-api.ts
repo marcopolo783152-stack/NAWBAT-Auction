@@ -6,7 +6,10 @@ async function main() {
   process.env.ADMIN_PASSWORD_HASH ||= '$2b$12$abcdefghijklmnopqrstuv12345678901234567890123456789012';
 
   const app = await createApp(false);
-  const server = app.listen(0, '127.0.0.1');
+  const server = await new Promise<ReturnType<typeof app.listen>>((resolve, reject) => {
+    const instance = app.listen(0, '127.0.0.1', () => resolve(instance));
+    instance.once('error', reject);
+  });
 
   try {
     const address = server.address();
