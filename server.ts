@@ -11,6 +11,7 @@ import { createPersistentUser, getPersistentUser, hasPersistentDatabase, listPer
 import { findAuthUserByEmail, markLogin, registerPublicUser, safeAuthUser } from './src/server/authRepository';
 import { NAWBAT_FEES, quoteFees } from './src/server/fees';
 import { getPool } from './src/server/postgres';
+import { BidError, placePersistentBid } from './src/server/bidRepository';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,6 +33,14 @@ export async function createApp(serveFrontend = true) {
     standardHeaders: 'draft-8',
     legacyHeaders: false,
   });
+  const bidLimiter = rateLimit({
+    windowMs: 60_000,
+    limit: 30,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: { success: false, error: 'Too many bid attempts. Please wait a moment.' },
+  });
+
   const adminLoginLimiter = rateLimit({
     windowMs: 15 * 60_000,
     limit: 10,
@@ -211,6 +220,53 @@ export async function createApp(serveFrontend = true) {
     const row = await findAuthUserByEmail(session.email);
     if (!row) return res.status(404).json({ error: 'Account not found.' });
     return res.json(safeAuthUser(row));
+  });
+
+  // -------------------------------------------------------------
+  // Server-authoritative auction bidding
+  // -------------------------------------------------------------
+  app.post('/api/auctions/:lotNumber/bids', requireSession, bidLimiter, async (req: Request, res: Response) => {
+    if (!hasPersistentDatabase()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Live bidding database is not configured yet.',
+        code: 'DATABASE_NOT_CONFIGURED',
+      });
+    }
+
+    const session = (req as Request & { session?: any }).session;
+    if (!session?.sub || session.sub === 'usr-admin-1') {
+      return res.status(403).json({ success: false, error: 'A marketplace user account is required to bid.' });
+    }
+
+    const amountAFN = Number(req.body?.amountAFN);
+    const maxProxyAFN = req.body?.maxProxyAFN === undefined || req.body?.maxProxyAFN === null
+      ? undefined
+      : Number(req.body.maxProxyAFN);
+
+    if (!Number.isSafeInteger(amountAFN) || amountAFN <= 0) {
+      return res.status(400).json({ success: false, error: 'Bid amount must be a positive whole AFN amount.' });
+    }
+    if (maxProxyAFN !== undefined && (!Number.isSafeInteger(maxProxyAFN) || maxProxyAFN <= 0)) {
+      return res.status(400).json({ success: false, error: 'Proxy maximum must be a positive whole AFN amount.' });
+    }
+
+    try {
+      const result = await placePersistentBid({
+        lotNumber: req.params.lotNumber,
+        bidderId: session.sub,
+        amountAFN,
+        maxProxyAFN,
+        ipAddress: req.ip || null,
+      });
+      return res.status(201).json(result);
+    } catch (error: any) {
+      if (error instanceof BidError) {
+        return res.status(error.status).json({ success: false, code: error.code, error: error.message });
+      }
+      console.error('Bid placement failed', error);
+      return res.status(500).json({ success: false, error: 'Could not place the bid.' });
+    }
   });
 
   // -------------------------------------------------------------

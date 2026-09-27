@@ -1,6 +1,6 @@
 # NAWBAT Production Readiness
 
-Last reviewed: 2026-09-26
+Last reviewed: 2026-09-27
 
 This file is the source-of-truth checklist for moving NAWBAT from a polished prototype to a real production auction marketplace.
 
@@ -12,7 +12,7 @@ This file is the source-of-truth checklist for moving NAWBAT from a polished pro
 - [x] TypeScript typecheck included in CI
 - [x] Vercel API entry point added
 - [x] Vite/esbuild dependency conflict fixed
-- [ ] Vercel production deployment must be green before merging to main
+- [x] Vercel production deployment is green
 - [ ] Add a lockfile for deterministic installs after final dependency set is stable
 
 ### Branding and public UI
@@ -37,7 +37,7 @@ This file is the source-of-truth checklist for moving NAWBAT from a polished pro
 - [x] X-Powered-By disabled
 - [ ] Move admin sessions to secure HttpOnly cookies before broad staff rollout
 - [ ] Add MFA for Super Admin and Finance roles
-- [ ] Enforce role permissions on every admin endpoint, not only in the UI
+- [x] Enforce role permissions on protected admin endpoints in the backend
 - [ ] Add account lock/recovery procedure for privileged staff
 
 ### Database
@@ -66,13 +66,13 @@ This file is the source-of-truth checklist for moving NAWBAT from a polished pro
 
 ### Public user accounts
 - [x] Unsafe unauthenticated mock-profile API disabled
-- [ ] Buyer registration
-- [ ] Seller registration
+- [x] Buyer registration
+- [x] Seller/business registration
 - [ ] Email/phone verification
 - [ ] Password reset
-- [ ] Secure user sessions
+- [x] Signed user sessions
 - [ ] User account deletion/deactivation workflow
-- [ ] Notification preferences tied to authenticated users
+- [x] Notification preferences tied to authenticated users
 
 ### Auction engine
 - [x] UI model supports timed auctions
@@ -80,14 +80,15 @@ This file is the source-of-truth checklist for moving NAWBAT from a polished pro
 - [x] Minimum increment presentation
 - [x] Anti-sniping presentation
 - [x] Proxy-bid fields exist in the data model
-- [ ] Public bids must be accepted only by a server-authoritative transactional bidding endpoint
-- [ ] Database row locking/serialization for concurrent bids
-- [ ] Server-side increment validation
-- [ ] Seller self-bid prevention
-- [ ] Bidder eligibility checks
-- [ ] Server-side anti-sniping extension
+- [x] PostgreSQL-backed auctions accept bids only through a server-authoritative transactional endpoint
+- [x] Database row locking/serialization for PostgreSQL-backed auction bids
+- [x] Server-side increment validation
+- [x] Seller self-bid prevention
+- [x] Bidder account/status eligibility checks
+- [x] Server-side 3-minute anti-sniping extension
 - [ ] Full proxy-bidding calculation
-- [ ] Immutable bid-event history
+- [ ] Move the public/sample auction catalog itself to PostgreSQL so every visible lot can use the live bidding engine
+- [x] Accepted bids are appended as immutable bid rows with audit events
 - [ ] Real-time WebSocket/SSE updates
 - [ ] Auction close worker/job with winner selection
 - [ ] Idempotent close/retry behavior
@@ -151,11 +152,11 @@ This file is the source-of-truth checklist for moving NAWBAT from a polished pro
 
 ### Legal and operations
 - [ ] Terms of Use reviewed for Afghanistan operations
-- [ ] Privacy policy
-- [ ] Seller agreement
-- [ ] Buyer rules
+- [x] Privacy policy principles and versioned acceptance flow implemented (legal review still required)
+- [x] Seller agreement drafted and shown during registration (legal review still required)
+- [x] Buyer rules drafted and shown during registration (legal review still required)
 - [ ] Prohibited/restricted items policy
-- [ ] Fee schedule
+- [x] Fee schedule implemented and versioned
 - [ ] Refund/cancellation policy
 - [ ] Data retention policy
 - [ ] Customer-support contact details
