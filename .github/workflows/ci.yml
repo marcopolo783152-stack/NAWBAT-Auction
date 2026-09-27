@@ -30,3 +30,6 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
+      - name: Smoke test API startup
+        run: npm run smoke:api
