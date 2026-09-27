@@ -18,6 +18,7 @@ import { EbthBrowseCatalog } from './components/EbthBrowseCatalog';
 import { AdminDashboard } from './components/AdminDashboard';
 import { UserProfileModal } from './components/UserProfileModal';
 import { authApi, NawbatUser } from './services/authApi';
+import { bidApi } from './services/bidApi';
 import { LoginPage } from './components/LoginPage';
 import { FeesPoliciesPage } from './components/FeesPoliciesPage';
 import { CheckCircle2, X } from 'lucide-react';
@@ -152,73 +153,68 @@ export default function App() {
     });
   };
 
-  // Handle Bid Placement
-  const handleBidSubmit = (lotId: string, amountAFN: number, isProxy: boolean, maxProxyAFN?: number) => {
+  // Handle Bid Placement through the server-authoritative PostgreSQL engine
+  const handleBidSubmit = async (lotId: string, amountAFN: number, isProxy: boolean, maxProxyAFN?: number) => {
     if (!currentUser) {
       setBidModalLot(null);
       setActiveTab('login');
-      return;
+      throw new Error(currentLang === 'en' ? 'Please sign in before bidding.' : 'برای پیشنهاد ابتدا وارد حساب شوید.');
     }
-    setLots((prevLots) => {
-      return prevLots.map((l) => {
-        if (l.id === lotId) {
-          const now = Date.now();
-          const msLeft = Math.max(0, l.endTime - now);
-          let newEndTime = l.endTime;
-          let antiSniped = false;
 
-          // Anti-Sniping rule: if bid placed in final 2 minutes, extend by 3 minutes!
-          if (msLeft < 2 * 60 * 1000) {
-            newEndTime = now + 3 * 60 * 1000;
-            antiSniped = true;
-          }
+    const lot = lots.find((item) => item.id === lotId);
+    if (!lot) throw new Error(currentLang === 'en' ? 'Auction could not be found.' : 'مزایده پیدا نشد.');
 
-          const newBidHistory = [
-            {
-              id: `bid-${Date.now()}`,
-              bidderName: `${currentUser.fullName} (${currentLang === 'en' ? 'You' : 'شما'})`,
-              bidderMaskedId: currentLang === 'en' ? 'You' : 'شما',
-              amountAFN,
-              timestamp: 'هم‌اکنون',
-              isWinning: true,
-            },
-            ...l.bidHistory.map((b) => ({ ...b, isWinning: false })),
-          ];
-
-          if (antiSniped) {
-            setToastMessage({
-              title: 'قانون ضدقیچی اعمال شد! (+3 دقیقه)',
-              subtitle: `ساعت حراج لوط ${l.lotNumber} به دلیل ثبت پیشنهاد در دقایق پایانی تمدید شد.`,
-            });
-          } else {
-            setToastMessage({
-              title: 'پیشنهاد شما با موفقیت ثبت شد!',
-              subtitle: `مبلغ ${amountAFN.toLocaleString('en-US')} AFN در این نشست مزایده ثبت شد. تایید پرداخت فقط پس از پاسخ رسمی حساب‌پی انجام می‌شود.`,
-            });
-          }
-
-          const updatedLot: AuctionLot = {
-            ...l,
-            currentBidAFN: amountAFN,
-            totalBids: l.totalBids + 1,
-            isReserveMet: amountAFN >= l.reservePriceAFN,
-            endTime: newEndTime,
-            bidHistory: newBidHistory,
-          };
-
-          if (selectedLot && selectedLot.id === lotId) {
-            setSelectedLot(updatedLot);
-          }
-
-          return updatedLot;
-        }
-        return l;
-      });
+    const result = await bidApi.placeBid({
+      lotNumber: lot.lotNumber,
+      amountAFN,
+      maxProxyAFN: isProxy ? maxProxyAFN : undefined,
     });
+
+    const newBidHistory = [
+      {
+        id: result.bid.id,
+        bidderName: `${currentUser.fullName} (${currentLang === 'en' ? 'You' : 'شما'})`,
+        bidderMaskedId: currentLang === 'en' ? 'You' : 'شما',
+        amountAFN: result.bid.amountAFN,
+        timestamp: currentLang === 'en' ? 'just now' : 'هم‌اکنون',
+        isWinning: true,
+      },
+      ...lot.bidHistory.map((bid) => ({ ...bid, isWinning: false })),
+    ];
+
+    const updatedLot: AuctionLot = {
+      ...lot,
+      currentBidAFN: result.auction.currentBidAFN,
+      totalBids: lot.totalBids + 1,
+      isReserveMet: result.auction.reserveMet,
+      endTime: result.auction.endTime,
+      bidHistory: newBidHistory,
+    };
+
+    setLots((prev) => prev.map((item) => item.id === lotId ? updatedLot : item));
+    if (selectedLot?.id === lotId) setSelectedLot(updatedLot);
 
     if (!myBiddedLotIds.includes(lotId)) {
       setMyBiddedLotIds((prev) => [...prev, lotId]);
     }
+
+    setToastMessage(
+      result.auction.antiSnipingExtended
+        ? {
+            title: currentLang === 'en' ? 'Bid accepted · auction extended' : 'پیشنهاد تایید شد · زمان تمدید شد',
+            subtitle: currentLang === 'en'
+              ? `Your ${amountAFN.toLocaleString('en-US')} AFN bid was recorded and the auction received the late-bid extension.`
+              : `پیشنهاد ${amountAFN.toLocaleString('en-US')} افغانی ثبت شد و زمان مزایده به دلیل پیشنهاد پایانی تمدید گردید.`,
+          }
+        : {
+            title: currentLang === 'en' ? 'Bid accepted by NAWBAT' : 'پیشنهاد توسط نوبت تایید شد',
+            subtitle: currentLang === 'en'
+              ? `${amountAFN.toLocaleString('en-US')} AFN was recorded in the live bidding database.`
+              : `مبلغ ${amountAFN.toLocaleString('en-US')} افغانی در پایگاه داده مزایده ثبت شد.`,
+          }
+    );
+
+    return { antiSnipingExtended: result.auction.antiSnipingExtended };
   };
 
   // Handle new lot creation
