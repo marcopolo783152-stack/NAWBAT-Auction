@@ -15,7 +15,7 @@ async function main() {
     const address = server.address();
     if (!address || typeof address === 'string') throw new Error('Could not determine smoke-test port.');
 
-    const response = await fetch(`http://127.0.0.1:${address.port}/api/health`);
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/health`, { headers: { Connection: 'close' } });
     const data = await response.json();
 
     if (!response.ok || data?.status !== 'ok') {
@@ -24,6 +24,7 @@ async function main() {
 
     console.log('NAWBAT API smoke test passed.');
   } finally {
+    server.closeAllConnections?.();
     await new Promise<void>((resolve, reject) => {
       server.close((error) => error ? reject(error) : resolve());
     });
